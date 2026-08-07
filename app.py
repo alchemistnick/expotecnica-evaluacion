@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import requests
+import json
 from datetime import datetime
 import uuid
 
@@ -88,10 +89,16 @@ if evaluador_seleccionado != "-- Seleccionar --":
                 "Destacado": "⭐" if destacado else ""
             }
             
-            with st.spinner("Guardando en la solapa EVALUACIÓN..."):
+            with st.spinner("Enviando a Google Sheets..."):
                 try:
-                    res = requests.post(URL_APPS_SCRIPT, json=datos_eval, timeout=10)
-                    st.success("🎉 ¡Evaluación guardada exitosamente en la solapa EVALUACIÓN!")
-                    st.balloons()
+                    headers = {"Content-Type": "application/json"}
+                    res = requests.post(URL_APPS_SCRIPT, data=json.dumps(datos_eval), headers=headers, timeout=10)
+                    
+                    st.write("📌 Status Code:", res.status_code)
+                    st.write("📌 Respuesta de Google:", res.text)
+                    
+                    if "OK" in res.text:
+                        st.success("🎉 ¡Evaluación guardada exitosamente!")
+                        st.balloons()
                 except Exception as err:
-                    st.error(f"Error al escribir en la planilla: {err}")
+                    st.error(f"Error de conexión: {err}")
