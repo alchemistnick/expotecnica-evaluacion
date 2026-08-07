@@ -18,18 +18,15 @@ st.set_page_config(
 # Estilos CSS Personalizados
 st.markdown("""
     <style>
-    /* Fondo e interfaz general */
     .stApp {
         background-color: #F8FAFC !important;
         color: #0F172A !important;
     }
     
-    /* Forzar visibilidad de textos en pantalla */
     label, p, span, h2, h3, h4, h5, h6, .stMarkdown, div[data-testid="stMarkdownContainer"] p {
         color: #0F172A !important;
     }
 
-    /* Encabezado Principal Centrado */
     .header-container {
         background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
         padding: 22px;
@@ -52,7 +49,6 @@ st.markdown("""
         text-align: center !important;
     }
 
-    /* Pestañas (Tabs) */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
         background-color: #E2E8F0;
@@ -61,7 +57,7 @@ st.markdown("""
     }
     .stTabs [data-baseweb="tab"] {
         border-radius: 8px;
-        padding: 10px 16px;
+        padding: 10px 14px;
         font-weight: 600;
         border: none !important;
     }
@@ -77,7 +73,6 @@ st.markdown("""
         font-weight: 700 !important;
     }
 
-    /* Tarjeta de Proyecto Seleccionado */
     .project-card {
         background-color: #FFFFFF;
         border-radius: 12px;
@@ -101,7 +96,6 @@ st.markdown("""
         text-decoration: underline;
     }
 
-    /* Formulario y Selectores */
     div[data-baseweb="select"] > div {
         background-color: #FFFFFF !important;
         color: #0F172A !important;
@@ -118,13 +112,11 @@ st.markdown("""
         border-radius: 8px !important;
     }
 
-    /* Sliders */
     div[data-testid="stSlider"] p {
         color: #0F172A !important;
         font-weight: 600 !important;
     }
 
-    /* Botón Guardar */
     .stButton>button {
         background: linear-gradient(135deg, #16A34A 0%, #15803D 100%) !important;
         color: #FFFFFF !important;
@@ -147,7 +139,7 @@ if os.path.exists("logo.png"):
         st.markdown("""
             <div class="header-container" style="margin-bottom: 0;">
                 <h1>⚙️ Expotécnica 2026</h1>
-                <p>Sistema Digital de Evaluación y Ranking</p>
+                <p>Sistema Digital de Evaluación y Voto Popular</p>
             </div>
         """, unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
@@ -155,7 +147,7 @@ else:
     st.markdown("""
         <div class="header-container">
             <h1>⚙️ Expotécnica 2026</h1>
-            <p>Sistema Digital de Evaluación y Ranking de Proyectos</p>
+            <p>Sistema Digital de Evaluación y Voto Popular</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -165,6 +157,7 @@ GID_EVALUACION = ""
 
 URL_PROYECTOS = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=PROYECTOS"
 URL_RANKING = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=RANKING_OFICIAL"
+URL_VOTO_POPULAR = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=" + urllib.parse.quote("VOTO_POPULAR")
 URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbxhYfT5q-hnJsv70NAiBmAY_Dwvbl-4jjn0uRdYWn1akl_bvZxQ1O25RoEmkp95IGzW/exec"
 
 # ==========================================
@@ -208,6 +201,14 @@ def cargar_ranking():
     df.columns = df.columns.str.strip()
     return df
 
+@st.cache_data(ttl=20)
+def cargar_votos_populares():
+    try:
+        df = pd.read_csv(URL_VOTO_POPULAR)
+        df.columns = df.columns.str.strip()
+        return df
+    except:
+        return pd.DataFrame(columns=["ID_Voto", "Fecha_Hora", "ID_Proyecto", "DNI_o_Email", "Voto"])
 
 try:
     df_proyectos = cargar_proyectos()
@@ -222,9 +223,9 @@ col_proyecto = 'Proyecto' if 'Proyecto' in df_proyectos.columns else df_proyecto
 col_url = next((c for c in df_proyectos.columns if any(k in c.lower() for k in ['url', 'link', 'enlace', 'drive', 'video'])), None)
 
 # Pestañas principales
-tab_evaluar, tab_ranking, tab_historial = st.tabs(["📝 Cargar Evaluación", "🏆 Ranking Oficial", "📋 Evaluaciones Cargadas"])
+tab_evaluar, tab_voto, tab_ranking, tab_historial = st.tabs(["📝 Jurado", "🗳️ Voto Popular", "🏆 Ranking Oficial", "📋 Historial Jurado"])
 
-# --- TAB 1: EVALUAR ---
+# --- TAB 1: EVALUACIÓN JURADO ---
 with tab_evaluar:
     evaluadores_unicos = sorted(list(set([str(x).strip() for x in df_proyectos[col_evaluador].dropna().tolist() if str(x).strip()])))
     evaluador_seleccionado = st.selectbox("👤 Selecciona tu Nombre (Evaluador):", ["-- Seleccionar --"] + evaluadores_unicos, key="sel_eval")
@@ -252,7 +253,7 @@ with tab_evaluar:
             </div>
             """, unsafe_allow_html=True)
             
-            # Verificar si el proyecto ya fue evaluado
+            # Verificar si el proyecto ya fue evaluado por el jurado
             df_eval_existentes = cargar_evaluaciones()
             evaluadores_previos = []
             
@@ -320,16 +321,85 @@ with tab_evaluar:
                             res = requests.post(URL_APPS_SCRIPT, data=json.dumps(datos_eval), headers=headers, timeout=15)
                             if "OK" in res.text:
                                 st.cache_data.clear()
-                                st.toast("⚙️ Evaluación registrada correctamente.", icon="⚙️")
+                                st.toast("⚙️ Evaluación procesada y registrada en el sistema.", icon="⚙️")
                                 st.success(f"⚙️ ¡Evaluación registrada con éxito! (ID: {id_eval_generado})")
                             else:
                                 st.error(f"Error al enviar datos: {res.text}")
                         except Exception as err:
                             st.error(f"Error de conexión: {err}")
 
-# --- TAB 2: RANKING OFICIAL ---
+# --- TAB 2: VOTO POPULAR ---
+with tab_voto:
+    st.markdown("### 🗳️ Voto del Público")
+    st.write("¡Vota por tu proyecto favorito de la Expotécnica 2026!")
+
+    # Todos los proyectos disponibles para votar
+    df_proyectos['Display_Voto'] = df_proyectos[col_id].astype(str) + " - " + df_proyectos[col_proyecto].astype(str) + " (" + df_proyectos[col_escuela].astype(str) + ")"
+    lista_proyectos_voto = df_proyectos['Display_Voto'].dropna().tolist()
+
+    proy_voto_elegido = st.selectbox("📌 Selecciona el Proyecto a Votar:", ["-- Seleccionar Proyecto --"] + lista_proyectos_voto, key="sel_proy_voto")
+    identificacion_votante = st.text_input("👤 Tu DNI o Email (opcional para validar tu voto):", placeholder="Ej: 40123456 o usuario@email.com", key="id_voter")
+
+    if proy_voto_elegido != "-- Seleccionar Proyecto --":
+        row_voto = df_proyectos[df_proyectos['Display_Voto'] == proy_voto_elegido].iloc[0]
+        id_proy_voto = str(row_voto[col_id])
+
+        if st.button("🌟 Emitir Voto Popular", type="primary", key="btn_votar"):
+            # Validación simple para evitar duplicados por DNI/Email
+            df_votos_previos = cargar_votos_populares()
+            ya_voto = False
+            
+            if identificacion_votante.strip() and len(df_votos_previos) > 0:
+                col_dni = next((c for c in df_votos_previos.columns if 'dni' in c.lower() or 'email' in c.lower()), df_votos_previos.columns[3])
+                votos_mismo_dni = df_votos_previos[df_votos_previos[col_dni].astype(str).str.strip().str.lower() == identificacion_votante.strip().lower()]
+                if len(votos_mismo_dni) > 0:
+                    ya_voto = True
+
+            if ya_voto:
+                st.warning(f"⚠️ El DNI/Email '{identificacion_votante.strip()}' ya registró un voto previamente.")
+            else:
+                payload_voto = {
+                    "accion": "votar_popular",
+                    "ID_Voto": str(uuid.uuid4())[:8],
+                    "Fecha_Hora": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                    "ID_Proyecto": id_proy_voto,
+                    "DNI_o_Email": identificacion_votante.strip() if identificacion_votante.strip() else "Anónimo"
+                }
+
+                with st.spinner("⚙️ Guardando tu voto..."):
+                    try:
+                        headers = {"Content-Type": "application/json"}
+                        res = requests.post(URL_APPS_SCRIPT, data=json.dumps(payload_voto), headers=headers, timeout=15)
+                        if "OK_VOTO" in res.text:
+                            st.cache_data.clear()
+                            st.balloons()
+                            st.success(f"🎉 ¡Gracias por votar por '{row_voto[col_proyecto]}'")
+                        else:
+                            st.error(f"Error al registrar voto: {res.text}")
+                    except Exception as err:
+                        st.error(f"Error de conexión: {err}")
+
+    # Tabla resumen de Votos Populares
+    st.markdown("---")
+    st.markdown("#### 📊 Recuento del Voto Popular")
+    df_votos = cargar_votos_populares()
+
+    if len(df_votos) > 0:
+        col_id_pv = next((c for c in df_votos.columns if 'proyecto' in c.lower()), df_votos.columns[2])
+        recuento = df_votos[col_id_pv].astype(str).value_counts().reset_index()
+        recuento.columns = ["ID_Proyecto", "Total Votos"]
+
+        # Cruzar con nombres de proyectos
+        df_recuento_final = pd.merge(recuento, df_proyectos[[col_id, col_proyecto, col_escuela]], left_on="ID_Proyecto", right_on=col_id, how="left")
+        df_recuento_final = df_recuento_final[["ID_Proyecto", col_proyecto, col_escuela, "Total Votos"]].sort_values(by="Total Votos", ascending=False)
+
+        st.dataframe(df_recuento_final, use_container_width=True, hide_index=True)
+    else:
+        st.info("Aún no se han registrado votos del público.")
+
+# --- TAB 3: RANKING OFICIAL JURADO ---
 with tab_ranking:
-    st.markdown("### 🏆 Posiciones Oficiales")
+    st.markdown("### 🏆 Posiciones Oficiales del Jurado")
     col_r1, col_r2 = st.columns([3, 1])
     with col_r2:
         if st.button("🔄 Actualizar", key="btn_rank_ref"):
@@ -347,13 +417,13 @@ with tab_ranking:
                 height=380
             )
         else:
-            st.info("Aún no se han consolidado posiciones en el ranking.")
+            st.info("Aún no se han consolidado posiciones en el ranking del jurado.")
     except Exception:
         st.warning("⚙️ El ranking se está calculando en segundo plano...")
 
-# --- TAB 3: EVALUACIONES CARGADAS Y ADMIN ---
+# --- TAB 4: HISTORIAL Y ADMIN ---
 with tab_historial:
-    st.markdown("### 📋 Historial de Evaluaciones")
+    st.markdown("### 📋 Historial de Evaluaciones de Jurados")
     try:
         df_eval = cargar_evaluaciones()
         
