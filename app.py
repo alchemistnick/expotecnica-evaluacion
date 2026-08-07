@@ -138,7 +138,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Encabezado Centrado con Logo si existe
+# Encabezado Centrado
 if os.path.exists("logo.png"):
     col_logo, col_header = st.columns([1, 3], vertical_alignment="center")
     with col_logo:
@@ -177,7 +177,7 @@ def cargar_proyectos():
     df.columns = df.columns.str.strip()
     return df
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=30)
 def cargar_evaluaciones():
     urls_a_probar = []
     if GID_EVALUACION.strip():
@@ -195,14 +195,14 @@ def cargar_evaluaciones():
             df = pd.read_csv(url)
             df.columns = df.columns.str.strip()
             cols_lower = [str(c).lower() for c in df.columns]
-            if any(k in cols_lower for k in ['id_evaluacion', 'c1', 'puntaje_total', 'porcentaje_logro']):
+            if any(k in cols_lower for k in ['id_evaluacion', 'id_evaluación', 'c1', 'puntaje_total', 'porcentaje_logro']):
                 return df
         except:
             continue
             
-    return pd.DataFrame(columns=["ID_Evaluacion", "Fecha_Hora", "Evaluador", "ID_Proyecto", "c1", "c2", "c3", "c4", "c5", "Puntaje_Total", "Porcentaje_Logro", "Comentarios", "Destacado"])
+    return pd.DataFrame(columns=["ID_Evaluación", "Fecha_Hora", "Evaluador", "ID_Proyecto", "c1", "c2", "c3", "c4", "c5", "Puntaje_Total", "Porcentaje_Logro", "Comentarios", "Destacado"])
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=30)
 def cargar_ranking():
     df = pd.read_csv(URL_RANKING)
     df.columns = df.columns.str.strip()
@@ -221,7 +221,7 @@ col_escuela = 'Escuela' if 'Escuela' in df_proyectos.columns else df_proyectos.c
 col_proyecto = 'Proyecto' if 'Proyecto' in df_proyectos.columns else df_proyectos.columns[2]
 col_url = next((c for c in df_proyectos.columns if any(k in c.lower() for k in ['url', 'link', 'enlace', 'drive', 'video'])), None)
 
-# Pestañas principales con Emojis
+# Pestañas principales
 tab_evaluar, tab_ranking, tab_historial = st.tabs(["📝 Cargar Evaluación", "🏆 Ranking Oficial", "📋 Evaluaciones Cargadas"])
 
 # --- TAB 1: EVALUAR ---
@@ -252,7 +252,7 @@ with tab_evaluar:
             </div>
             """, unsafe_allow_html=True)
             
-            # --- VERIFICAR SI EL PROYECTO YA FUE EVALUADO ---
+            # Verificar si el proyecto ya fue evaluado
             df_eval_existentes = cargar_evaluaciones()
             evaluadores_previos = []
             
@@ -279,7 +279,6 @@ with tab_evaluar:
                     permitir_evaluacion = False
                     st.info("No se mostrará el formulario de evaluación para este proyecto.")
 
-            # Formulario de calificación
             if permitir_evaluacion:
                 st.markdown("#### 📝 Rubro de Calificación")
                 
@@ -299,10 +298,12 @@ with tab_evaluar:
                 if enviar:
                     puntaje_total = c1 + c2 + c3 + c4 + c5
                     porcentaje_logro = f"{(puntaje_total / 25.0) * 100:.1f}%"
+                    id_eval_generado = str(uuid.uuid4())[:8]
                     
                     datos_eval = {
                         "accion": "crear",
-                        "ID_Evaluacion": str(uuid.uuid4())[:8],
+                        "ID_Evaluación": id_eval_generado,
+                        "ID_Evaluacion": id_eval_generado,
                         "Fecha_Hora": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
                         "Evaluador": evaluador_seleccionado,
                         "ID_Proyecto": str(row_proj[col_id]),
@@ -319,8 +320,8 @@ with tab_evaluar:
                             res = requests.post(URL_APPS_SCRIPT, data=json.dumps(datos_eval), headers=headers, timeout=15)
                             if "OK" in res.text:
                                 st.cache_data.clear()
-                                st.toast("⚙️ Evaluación procesada y registrada en el sistema.", icon="⚙️")
-                                st.success("⚙️ ¡Evaluación registrada con éxito!")
+                                st.toast("⚙️ Evaluación registrada correctamente.", icon="⚙️")
+                                st.success(f"⚙️ ¡Evaluación registrada con éxito! (ID: {id_eval_generado})")
                             else:
                                 st.error(f"Error al enviar datos: {res.text}")
                         except Exception as err:
@@ -367,7 +368,7 @@ with tab_historial:
                 df_mis_eval = df_eval
                 
             if len(df_mis_eval) > 0:
-                cols_compactas = [c for c in ["Fecha_Hora", "Evaluador", "ID_Proyecto", "Puntaje_Total", "Porcentaje_Logro", "Destacado", "Comentarios"] if c in df_mis_eval.columns]
+                cols_compactas = [c for c in df_mis_eval.columns if any(k in c.lower() for k in ['id_evalua', 'fecha', 'evaluador', 'id_proyecto', 'puntaje', 'porcentaje', 'destacado', 'comentario'])]
                 df_compacto = df_mis_eval[cols_compactas] if len(cols_compactas) > 0 else df_mis_eval
                 
                 st.dataframe(
@@ -391,14 +392,31 @@ with tab_historial:
                 
                 if len(df_eval) > 0:
                     col_id_eval = df_eval.columns[0]
-                    ids_disponibles = df_eval[col_id_eval].dropna().astype(str).tolist()
+                    col_id_p = next((c for c in df_eval.columns if 'proyecto' in c.lower()), df_eval.columns[3])
+                    col_eval_p = next((c for c in df_eval.columns if 'evaluador' in c.lower()), df_eval.columns[2])
                     
-                    if ids_disponibles:
-                        id_a_borrar = st.selectbox("🗑️ ID_Evaluación a eliminar:", ["-- Seleccionar ID --"] + ids_disponibles)
+                    opciones_borrar = {}
+                    for idx, r in df_eval.iterrows():
+                        id_e = str(r[col_id_eval]).strip()
+                        if id_e and id_e.lower() != 'nan':
+                            label = f"ID: {id_e} | Proy: {r[col_id_p]} | Eval: {r[col_eval_p]}"
+                            opciones_borrar[label] = id_e
+                    
+                    if opciones_borrar:
+                        opcion_elegida = st.selectbox(
+                            "🗑️ Selecciona la evaluación a eliminar:", 
+                            ["-- Seleccionar Registro --"] + list(opciones_borrar.keys())
+                        )
                         
-                        if id_a_borrar != "-- Seleccionar ID --":
+                        if opcion_elegida != "-- Seleccionar Registro --":
+                            id_a_borrar = opciones_borrar[opcion_elegida]
+                            
                             if st.button("❌ Confirmar Eliminación", type="primary"):
-                                payload_delete = {"accion": "eliminar", "ID_Evaluacion": id_a_borrar}
+                                payload_delete = {
+                                    "accion": "eliminar", 
+                                    "ID_Evaluacion": id_a_borrar,
+                                    "ID_Evaluación": id_a_borrar
+                                }
                                 with st.spinner("⚙️ Eliminando fila de la planilla..."):
                                     try:
                                         headers = {"Content-Type": "application/json"}
