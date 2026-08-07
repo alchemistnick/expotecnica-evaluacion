@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from streamlit_gsheets import GSheetsConnection
 from datetime import datetime
 import uuid
 
@@ -17,20 +18,16 @@ st.markdown("""
 st.title("📋 Evaluación Expotécnica")
 st.write("Selecciona un proyecto asignado y carga tu evaluación.")
 
-# ID de tu planilla de Google Sheets
-SPREADSHEET_ID = "1KWw1ybOAuxxBk4P3gVoqp90UXx2pBaa9ccAiiV8Rd-w"
-URL_PROYECTOS = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=PROYECTOS"
+# Conexión con Google Sheets mediante st.connection
+conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Cargar tabla PROYECTOS
 try:
-    df_proyectos = pd.read_csv(URL_PROYECTOS)
-    # Limpiar nombres de columnas removiendo espacios extras
+    df_proyectos = conn.read(worksheet="PROYECTOS", ttl=0)
     df_proyectos.columns = df_proyectos.columns.str.strip()
 except Exception as e:
-    st.error("Error al conectar con la planilla de Google Sheets.")
+    st.error("Error al conectar con la planilla de Google Sheets. Revisa la configuración de Secrets y permisos.")
     st.stop()
 
-# Verificar columna de evaluador
 col_evaluador = 'Evaluador' if 'Evaluador' in df_proyectos.columns else df_proyectos.columns[3]
 col_id = 'ID_proyecto' if 'ID_proyecto' in df_proyectos.columns else df_proyectos.columns[0]
 col_escuela = 'Escuela' if 'Escuela' in df_proyectos.columns else df_proyectos.columns[1]
@@ -78,11 +75,38 @@ if evaluador_seleccionado != "-- Seleccionar --":
             comentarios = st.text_area("💬 Comentarios / Observaciones:", placeholder="Escribe aquí tus comentarios del proyecto...")
             destacado = st.checkbox("⭐ ¿Marcar como Proyecto Destacado?")
             
-            enviar = st.form_submit_button("💾 Confirmar Evaluación")
+            enviar = st.form_submit_button("💾 Guardar Evaluación")
             
         if enviar:
             puntaje_total = c1 + c2 + c3 + c4 + c5
             porcentaje_logro = (puntaje_total / 25.0) * 100
             
-            st.success(f"🎉 ¡Evaluación completada para el proyecto {row_proj[col_id]}!")
-            st.info(f"**Puntaje Total:** {puntaje_total}/25 ({porcentaje_logro:.1f}%)")
+            # Formato exacto de columnas para la pestaña EVALUACIÓN
+            nueva_evaluacion = pd.DataFrame([{
+                "ID_Evaluacion": str(uuid.uuid4())[:8],
+                "Fecha_Hora": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                "Evaluador": evaluador_seleccionado,
+                "ID_Proyecto": str(row_proj[col_id]),
+                "¿El proyecto resuelve un problema claro y funciona correctamente según los objetivos planteados?": c1,
+                "¿La propuesta presenta una idea novedosa, original o un uso creativo de los recursos/tecnología?": c2,
+                "¿El equipo explica con claridad cómo desarrollaron el proyecto y demuestra dominio del tema y vocabulario técnico?": c3,
+                "¿El stand se encuentra prolijo, bien organizado y utiliza apoyo visual o demostrativo atractivo?": c4,
+                "¿Logran adaptar la explicación para que personas sin conocimientos técnicos o visitantes de distintos niveles entiendan la idea?": c5,
+                "Puntaje_Total": puntaje_total,
+                "Porcentaje_Logro": f"{porcentaje_logro:.1f}%",
+                "Comentarios": comentarios,
+                "Destacado": "⭐" if destacado else ""
+            }])
+            
+            try:
+                # Leer evaluaciones actuales y concatenar la nueva fila
+                df_evals = conn.read(worksheet="EVALUACIÓN", ttl=0)
+                df_actualizado = pd.concat([df_evals, nueva_evaluacion], ignore_index=True)
+                
+                # Escribir en la solapa EVALUACIÓN
+                conn.update(worksheet="EVALUACIÓN", data=df_actualizado)
+                
+                st.success(f"🎉 ¡Evaluación guardada exitosamente en la solapa EVALUACIÓN!")
+                st.balloons()
+            except Exception as ex:
+                st.error(f"Error al escribir en la planilla: {ex}")
