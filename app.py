@@ -21,21 +21,29 @@ st.write("Selecciona un proyecto asignado y carga tu evaluación.")
 SPREADSHEET_ID = "1KWw1ybOAuxxBk4P3gVoqp90UXx2pBaa9ccAiiV8Rd-w"
 URL_PROYECTOS = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=PROYECTOS"
 
-# Cargar tabla PROYECTOS mediante la API pública de CSV
+# Cargar tabla PROYECTOS
 try:
     df_proyectos = pd.read_csv(URL_PROYECTOS)
+    # Limpiar nombres de columnas removiendo espacios extras
+    df_proyectos.columns = df_proyectos.columns.str.strip()
 except Exception as e:
-    st.error("Error al conectar con la planilla de Google Sheets. Asegúrate de que los permisos en la planilla estén en 'Cualquier persona con el enlace'.")
+    st.error("Error al conectar con la planilla de Google Sheets.")
     st.stop()
 
+# Verificar columna de evaluador
+col_evaluador = 'Evaluador' if 'Evaluador' in df_proyectos.columns else df_proyectos.columns[3]
+col_id = 'ID_proyecto' if 'ID_proyecto' in df_proyectos.columns else df_proyectos.columns[0]
+col_escuela = 'Escuela' if 'Escuela' in df_proyectos.columns else df_proyectos.columns[1]
+col_proyecto = 'Proyecto' if 'Proyecto' in df_proyectos.columns else df_proyectos.columns[2]
+
 # 1. Selección de Evaluador
-evaluadores_unicos = sorted(list(set([str(x).strip() for x in df_proyectos['Evaluador'].dropna().tolist() if str(x).strip()])))
+evaluadores_unicos = sorted(list(set([str(x).strip() for x in df_proyectos[col_evaluador].dropna().tolist() if str(x).strip()])))
 evaluador_seleccionado = st.selectbox("👤 Selecciona tu Nombre (Evaluador):", ["-- Seleccionar --"] + evaluadores_unicos)
 
 if evaluador_seleccionado != "-- Seleccionar --":
-    df_filtrado = df_proyectos[df_proyectos['Evaluador'].astype(str).str.contains(evaluador_seleccionado, case=False, na=False)].copy()
+    df_filtrado = df_proyectos[df_proyectos[col_evaluador].astype(str).str.contains(evaluador_seleccionado, case=False, na=False)].copy()
     
-    df_filtrado['Display'] = df_filtrado['ID_proyecto'].astype(str) + " - " + df_filtrado['Proyecto'].astype(str) + " (" + df_filtrado['Escuela'].astype(str) + ")"
+    df_filtrado['Display'] = df_filtrado[col_id].astype(str) + " - " + df_filtrado[col_proyecto].astype(str) + " (" + df_filtrado[col_escuela].astype(str) + ")"
     proyectos_opciones = df_filtrado['Display'].tolist()
     
     st.info(f"Tienes **{len(proyectos_opciones)} proyectos** asignados.")
@@ -47,15 +55,14 @@ if evaluador_seleccionado != "-- Seleccionar --":
         
         st.markdown(f"""
         <div class="project-card">
-            <h4>{row_proj['Proyecto']}</h4>
-            <p><b>ID:</b> {row_proj['ID_proyecto']} | <b>Escuela:</b> {row_proj['Escuela']}</p>
-            <p><b>Estado previo:</b> {'✅ Ya Evaluado' if str(row_proj.get('Fué evaluado', '')).upper() == 'SI' else '⏳ Pendiente'}</p>
+            <h4>{row_proj[col_proyecto]}</h4>
+            <p><b>ID:</b> {row_proj[col_id]} | <b>Escuela:</b> {row_proj[col_escuela]}</p>
         </div>
         """, unsafe_allow_html=True)
         
-        if pd.notna(row_proj.get('Link al Proyecto')) and str(row_proj['Link al Proyecto']).startswith("http"):
+        if 'Link al Proyecto' in row_proj and pd.notna(row_proj['Link al Proyecto']) and str(row_proj['Link al Proyecto']).startswith("http"):
             st.markdown(f"📄 [Abrir Documento/Link del Proyecto]({row_proj['Link al Proyecto']})")
-        if pd.notna(row_proj.get('Link al Video')) and str(row_proj['Link al Video']).startswith("http"):
+        if 'Link al Video' in row_proj and pd.notna(row_proj['Link al Video']) and str(row_proj['Link al Video']).startswith("http"):
             st.markdown(f"🎥 [Ver Video del Proyecto]({row_proj['Link al Video']})")
             
         st.markdown("---")
@@ -77,5 +84,5 @@ if evaluador_seleccionado != "-- Seleccionar --":
             puntaje_total = c1 + c2 + c3 + c4 + c5
             porcentaje_logro = (puntaje_total / 25.0) * 100
             
-            st.success(f"🎉 ¡Evaluación calculada con éxito para el proyecto {row_proj['ID_proyecto']}!")
+            st.success(f"🎉 ¡Evaluación completada para el proyecto {row_proj[col_id]}!")
             st.info(f"**Puntaje Total:** {puntaje_total}/25 ({porcentaje_logro:.1f}%)")
