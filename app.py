@@ -18,7 +18,6 @@ st.set_page_config(
 # Estilos CSS Personalizados
 st.markdown("""
     <style>
-    /* Fondo e interfaz general */
     .stApp {
         background-color: #F8FAFC !important;
         color: #0F172A !important;
@@ -88,13 +87,15 @@ st.markdown("""
         color: #0F172A !important;
         font-size: 1.25rem !important;
     }
-    .project-card p, .project-card code {
-        color: #334155 !important;
-    }
-    .project-card a {
-        color: #2563EB !important;
-        font-weight: 600;
-        text-decoration: underline;
+
+    /* Filas de la lista de conteo popular */
+    .vote-row {
+        background-color: #FFFFFF;
+        padding: 12px 16px;
+        border-radius: 10px;
+        border: 1px solid #E2E8F0;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.02);
     }
 
     div[data-baseweb="select"] > div {
@@ -103,30 +104,14 @@ st.markdown("""
         border: 1px solid #CBD5E1 !important;
         border-radius: 8px !important;
     }
-    div[data-baseweb="select"] span {
-        color: #0F172A !important;
-    }
-    .stTextInput input, .stTextArea textarea, .stNumberInput input {
-        background-color: #FFFFFF !important;
-        color: #0F172A !important;
-        border: 1px solid #CBD5E1 !important;
-        border-radius: 8px !important;
-    }
-
-    div[data-testid="stSlider"] p {
-        color: #0F172A !important;
-        font-weight: 600 !important;
-    }
 
     .stButton>button {
         background: linear-gradient(135deg, #16A34A 0%, #15803D 100%) !important;
         color: #FFFFFF !important;
-        font-size: 17px !important;
+        font-size: 15px !important;
         font-weight: 700 !important;
-        border-radius: 10px !important;
-        padding: 0.75rem 1rem !important;
+        border-radius: 8px !important;
         border: none !important;
-        box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -135,7 +120,7 @@ st.markdown("""
 if os.path.exists("logo.png"):
     col_logo, col_header = st.columns([1, 3], vertical_alignment="center")
     with col_logo:
-        st.image("logo.png", use_container_width=True)
+        st.image("logo.png", use_column_width=True)
     with col_header:
         st.markdown("""
             <div class="header-container" style="margin-bottom: 0;">
@@ -202,7 +187,7 @@ def cargar_ranking():
     df.columns = df.columns.str.strip()
     return df
 
-@st.cache_data(ttl=15)
+@st.cache_data(ttl=10)
 def cargar_votos_populares():
     try:
         df = pd.read_csv(URL_VOTO_POPULAR)
@@ -210,6 +195,23 @@ def cargar_votos_populares():
         return df
     except:
         return pd.DataFrame(columns=["ID_Voto", "Fecha_Hora", "ID_Proyecto", "DNI_o_Email", "Voto"])
+
+def registrar_voto_servidor(id_proyecto_voto, cantidad=1):
+    payload_voto = {
+        "accion": "votar_popular",
+        "ID_Voto": str(uuid.uuid4())[:8],
+        "Fecha_Hora": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+        "ID_Proyecto": str(id_proyecto_voto),
+        "DNI_o_Email": f"Conteo Manual ({cantidad})"
+    }
+    try:
+        headers = {"Content-Type": "application/json"}
+        for _ in range(cantidad):
+            requests.post(URL_APPS_SCRIPT, data=json.dumps(payload_voto), headers=headers, timeout=12)
+        st.cache_data.clear()
+        return True
+    except:
+        return False
 
 try:
     df_proyectos = cargar_proyectos()
@@ -254,7 +256,6 @@ with tab_evaluar:
             </div>
             """, unsafe_allow_html=True)
             
-            # Verificar si el proyecto ya fue evaluado
             df_eval_existentes = cargar_evaluaciones()
             evaluadores_previos = []
             
@@ -329,69 +330,63 @@ with tab_evaluar:
                         except Exception as err:
                             st.error(f"Error de conexión: {err}")
 
-# --- TAB 2: MÓDULO DE CONTEO Y CÁLCULO DE VOTO POPULAR ---
+# --- TAB 2: MÓDULO INTERACTIVO DE CONTEO Y VOTO POPULAR ---
 with tab_voto:
-    st.markdown("### 🗳️ Módulo de Conteo - Voto Popular")
-    st.caption("Planilla de carga de votos para operadores y fiscales del evento.")
+    st.markdown("### 🗳️ Planilla de Conteo — Voto Popular")
+    st.caption("Suma votos rápidamente a cada proyecto mientras cuentan los papelitos.")
 
-    df_proyectos['Display_Voto'] = df_proyectos[col_id].astype(str) + " - " + df_proyectos[col_proyecto].astype(str) + " (" + df_proyectos[col_escuela].astype(str) + ")"
-    lista_proyectos_voto = df_proyectos['Display_Voto'].dropna().tolist()
-
-    col_v1, col_v2 = st.columns([3, 1])
-    with col_v1:
-        proy_voto_elegido = st.selectbox("📌 Selecciona el Proyecto:", ["-- Seleccionar Proyecto --"] + lista_proyectos_voto, key="sel_proy_voto")
-    with col_v2:
-        cant_votos_sumar = st.number_input("Cantidad:", min_value=1, max_value=500, value=1, step=1, key="cant_votos_add")
-
-    if proy_voto_elegido != "-- Seleccionar Proyecto --":
-        row_voto = df_proyectos[df_proyectos['Display_Voto'] == proy_voto_elegido].iloc[0]
-        id_proy_voto = str(row_voto[col_id])
-
-        if st.button("➕ Sumar Voto(s) al Proyecto", type="primary", key="btn_votar"):
-            payload_voto = {
-                "accion": "votar_popular",
-                "ID_Voto": str(uuid.uuid4())[:8],
-                "Fecha_Hora": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-                "ID_Proyecto": id_proy_voto,
-                "DNI_o_Email": f"Carga Manual ({cant_votos_sumar})"
-            }
-
-            # Si suma más de 1 voto, los enviamos como registros individuales
-            with st.spinner(f"⚙️ Sumando {cant_votos_sumar} voto(s)..."):
-                exito = True
-                for _ in range(int(cant_votos_sumar)):
-                    try:
-                        headers = {"Content-Type": "application/json"}
-                        res = requests.post(URL_APPS_SCRIPT, data=json.dumps(payload_voto), headers=headers, timeout=15)
-                        if "OK_VOTO" not in res.text:
-                            exito = False
-                            break
-                    except:
-                        exito = False
-                        break
-                
-                if exito:
-                    st.cache_data.clear()
-                    st.toast(f"⚙️ ¡+{cant_votos_sumar} voto(s) agregados!", icon="🗳️")
-                    st.success(f"🎉 ¡Se agregaron {cant_votos_sumar} voto(s) a '{row_voto[col_proyecto]}'!")
-                else:
-                    st.error("Error al conectar con la planilla para registrar el voto.")
-
-    st.markdown("---")
-    st.markdown("#### 📊 Tabla de Posiciones — Voto Popular")
+    # Cargar conteo actual de votos
     df_votos = cargar_votos_populares()
-
+    conteo_map = {}
+    
     if len(df_votos) > 0:
         col_id_pv = next((c for c in df_votos.columns if 'proyecto' in c.lower()), df_votos.columns[2])
-        recuento = df_votos[col_id_pv].astype(str).value_counts().reset_index()
-        recuento.columns = ["ID_Proyecto", "Total Votos"]
+        v_counts = df_votos[col_id_pv].astype(str).str.strip().value_counts()
+        conteo_map = v_counts.to_dict()
 
-        df_recuento_final = pd.merge(recuento, df_proyectos[[col_id, col_proyecto, col_escuela]], left_on="ID_Proyecto", right_on=col_id, how="left")
-        df_recuento_final = df_recuento_final[["ID_Proyecto", col_proyecto, col_escuela, "Total Votos"]].sort_values(by="Total Votos", ascending=False)
+    # Buscador rápido
+    busqueda = st.text_input("🔍 Buscar proyecto por ID o Nombre:", placeholder="Ej: N_002 o Lámpara", key="search_proy_voto")
+    
+    df_proy_view = df_proyectos.copy()
+    if busqueda.strip():
+        term = busqueda.strip().lower()
+        df_proy_view = df_proy_view[
+            df_proy_view[col_id].astype(str).str.lower().str.contains(term) | 
+            df_proy_view[col_proyecto].astype(str).str.lower().str.contains(term)
+        ]
 
-        st.dataframe(df_recuento_final, use_container_width=True, hide_index=True)
-    else:
-        st.info("Aún no se han registrado votos en la solapa VOTO_POPULAR.")
+    st.markdown("---")
+
+    # Mostrar lista de proyectos con sus contadores directos
+    for idx, row in df_proy_view.iterrows():
+        p_id = str(row[col_id]).strip()
+        p_nombre = str(row[col_proyecto]).strip()
+        p_escuela = str(row[col_escuela]).strip()
+        total_actual = conteo_map.get(p_id, 0)
+
+        # Fila de recuento interactiva
+        c_info, c_total, c_btn1, c_btn5 = st.columns([4, 2, 1, 1], vertical_alignment="center")
+        
+        with c_info:
+            st.markdown(f"**`{p_id}` — {p_nombre}**")
+            st.caption(f"🏫 {p_escuela}")
+            
+        with c_total:
+            st.markdown(f"📊 **{total_actual} votos**")
+            
+        with c_btn1:
+            if st.button("+1", key=f"btn_add1_{p_id}"):
+                if registrar_voto_servidor(p_id, 1):
+                    st.toast(f"¡+1 voto a {p_id}!", icon="🗳️")
+                    st.rerun()
+
+        with c_btn5:
+            if st.button("+5", key=f"btn_add5_{p_id}"):
+                if registrar_voto_servidor(p_id, 5):
+                    st.toast(f"¡+5 votos a {p_id}!", icon="🗳️")
+                    st.rerun()
+
+        st.markdown("<hr style='margin: 8px 0; border: none; border-top: 1px solid #F1F5F9;'>", unsafe_allow_html=True)
 
 # --- TAB 3: RANKING OFICIAL JURADO ---
 with tab_ranking:
