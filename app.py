@@ -24,12 +24,10 @@ st.markdown("""
         color: #0F172A !important;
     }
     
-    /* Forzar visibilidad de textos en pantalla */
     label, p, span, h2, h3, h4, h5, h6, .stMarkdown, div[data-testid="stMarkdownContainer"] p {
         color: #0F172A !important;
     }
 
-    /* Encabezado Principal Centrado */
     .header-container {
         background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
         padding: 22px;
@@ -52,7 +50,6 @@ st.markdown("""
         text-align: center !important;
     }
 
-    /* Pestañas (Tabs) */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
         background-color: #E2E8F0;
@@ -77,7 +74,6 @@ st.markdown("""
         font-weight: 700 !important;
     }
 
-    /* Tarjeta de Proyecto Seleccionado */
     .project-card {
         background-color: #FFFFFF;
         border-radius: 12px;
@@ -101,7 +97,6 @@ st.markdown("""
         text-decoration: underline;
     }
 
-    /* Formulario y Selectores */
     div[data-baseweb="select"] > div {
         background-color: #FFFFFF !important;
         color: #0F172A !important;
@@ -111,20 +106,18 @@ st.markdown("""
     div[data-baseweb="select"] span {
         color: #0F172A !important;
     }
-    .stTextInput input, .stTextArea textarea {
+    .stTextInput input, .stTextArea textarea, .stNumberInput input {
         background-color: #FFFFFF !important;
         color: #0F172A !important;
         border: 1px solid #CBD5E1 !important;
         border-radius: 8px !important;
     }
 
-    /* Sliders */
     div[data-testid="stSlider"] p {
         color: #0F172A !important;
         font-weight: 600 !important;
     }
 
-    /* Botón Guardar */
     .stButton>button {
         background: linear-gradient(135deg, #16A34A 0%, #15803D 100%) !important;
         color: #FFFFFF !important;
@@ -209,7 +202,7 @@ def cargar_ranking():
     df.columns = df.columns.str.strip()
     return df
 
-@st.cache_data(ttl=20)
+@st.cache_data(ttl=15)
 def cargar_votos_populares():
     try:
         df = pd.read_csv(URL_VOTO_POPULAR)
@@ -336,57 +329,56 @@ with tab_evaluar:
                         except Exception as err:
                             st.error(f"Error de conexión: {err}")
 
-# --- TAB 2: VOTO POPULAR ---
+# --- TAB 2: MÓDULO DE CONTEO Y CÁLCULO DE VOTO POPULAR ---
 with tab_voto:
-    st.markdown("### 🗳️ Voto del Público")
-    st.write("¡Vota por tu proyecto favorito de la Expotécnica 2026!")
+    st.markdown("### 🗳️ Módulo de Conteo - Voto Popular")
+    st.caption("Planilla de carga de votos para operadores y fiscales del evento.")
 
     df_proyectos['Display_Voto'] = df_proyectos[col_id].astype(str) + " - " + df_proyectos[col_proyecto].astype(str) + " (" + df_proyectos[col_escuela].astype(str) + ")"
     lista_proyectos_voto = df_proyectos['Display_Voto'].dropna().tolist()
 
-    proy_voto_elegido = st.selectbox("📌 Selecciona el Proyecto a Votar:", ["-- Seleccionar Proyecto --"] + lista_proyectos_voto, key="sel_proy_voto")
-    identificacion_votante = st.text_input("👤 Tu DNI o Email (opcional para validar tu voto):", placeholder="Ej: 40123456 o usuario@email.com", key="id_voter")
+    col_v1, col_v2 = st.columns([3, 1])
+    with col_v1:
+        proy_voto_elegido = st.selectbox("📌 Selecciona el Proyecto:", ["-- Seleccionar Proyecto --"] + lista_proyectos_voto, key="sel_proy_voto")
+    with col_v2:
+        cant_votos_sumar = st.number_input("Cantidad:", min_value=1, max_value=500, value=1, step=1, key="cant_votos_add")
 
     if proy_voto_elegido != "-- Seleccionar Proyecto --":
         row_voto = df_proyectos[df_proyectos['Display_Voto'] == proy_voto_elegido].iloc[0]
         id_proy_voto = str(row_voto[col_id])
 
-        if st.button("🌟 Emitir Voto Popular", type="primary", key="btn_votar"):
-            df_votos_previos = cargar_votos_populares()
-            ya_voto = False
-            
-            if identificacion_votante.strip() and len(df_votos_previos) > 0:
-                col_dni = next((c for c in df_votos_previos.columns if 'dni' in c.lower() or 'email' in c.lower()), df_votos_previos.columns[3])
-                votos_mismo_dni = df_votos_previos[df_votos_previos[col_dni].astype(str).str.strip().str.lower() == identificacion_votante.strip().lower()]
-                if len(votos_mismo_dni) > 0:
-                    ya_voto = True
+        if st.button("➕ Sumar Voto(s) al Proyecto", type="primary", key="btn_votar"):
+            payload_voto = {
+                "accion": "votar_popular",
+                "ID_Voto": str(uuid.uuid4())[:8],
+                "Fecha_Hora": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                "ID_Proyecto": id_proy_voto,
+                "DNI_o_Email": f"Carga Manual ({cant_votos_sumar})"
+            }
 
-            if ya_voto:
-                st.warning(f"⚠️ El DNI/Email '{identificacion_votante.strip()}' ya registró un voto previamente.")
-            else:
-                payload_voto = {
-                    "accion": "votar_popular",
-                    "ID_Voto": str(uuid.uuid4())[:8],
-                    "Fecha_Hora": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-                    "ID_Proyecto": id_proy_voto,
-                    "DNI_o_Email": identificacion_votante.strip() if identificacion_votante.strip() else "Anónimo"
-                }
-
-                with st.spinner("⚙️ Guardando tu voto..."):
+            # Si suma más de 1 voto, los enviamos como registros individuales
+            with st.spinner(f"⚙️ Sumando {cant_votos_sumar} voto(s)..."):
+                exito = True
+                for _ in range(int(cant_votos_sumar)):
                     try:
                         headers = {"Content-Type": "application/json"}
                         res = requests.post(URL_APPS_SCRIPT, data=json.dumps(payload_voto), headers=headers, timeout=15)
-                        if "OK_VOTO" in res.text:
-                            st.cache_data.clear()
-                            st.toast("⚙️ Voto registrado exitosamente.", icon="⚙️")
-                            st.success(f"🎉 ¡Gracias por votar por '{row_voto[col_proyecto]}'!")
-                        else:
-                            st.error(f"Error al registrar voto: {res.text}")
-                    except Exception as err:
-                        st.error(f"Error de conexión: {err}")
+                        if "OK_VOTO" not in res.text:
+                            exito = False
+                            break
+                    except:
+                        exito = False
+                        break
+                
+                if exito:
+                    st.cache_data.clear()
+                    st.toast(f"⚙️ ¡+{cant_votos_sumar} voto(s) agregados!", icon="🗳️")
+                    st.success(f"🎉 ¡Se agregaron {cant_votos_sumar} voto(s) a '{row_voto[col_proyecto]}'!")
+                else:
+                    st.error("Error al conectar con la planilla para registrar el voto.")
 
     st.markdown("---")
-    st.markdown("#### 📊 Recuento del Voto Popular")
+    st.markdown("#### 📊 Tabla de Posiciones — Voto Popular")
     df_votos = cargar_votos_populares()
 
     if len(df_votos) > 0:
@@ -399,9 +391,9 @@ with tab_voto:
 
         st.dataframe(df_recuento_final, use_container_width=True, hide_index=True)
     else:
-        st.info("Aún no se han registrado votos del público.")
+        st.info("Aún no se han registrado votos en la solapa VOTO_POPULAR.")
 
-# --- TAB 3: RANKING OFICIAL ---
+# --- TAB 3: RANKING OFICIAL JURADO ---
 with tab_ranking:
     st.markdown("### 🏆 Posiciones Oficiales del Jurado")
     col_r1, col_r2 = st.columns([3, 1])
