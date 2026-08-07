@@ -7,42 +7,113 @@ from datetime import datetime
 import uuid
 import os
 
-# Configuración de página
+# Configuración de la página
 st.set_page_config(
-    page_title="Expotécnica 2026", 
-    page_icon="🏆", 
+    page_title="Expotécnica 2026 — Plataforma de Evaluación", 
+    page_icon="logo.png" if os.path.exists("logo.png") else "📊", 
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# Estilos CSS Personalizados con Contraste Reforzado
+# Estilos CSS Profesionales y Limpios
 st.markdown("""
     <style>
-    /* Fondo e interfaz general */
+    /* Estilos globales */
     .stApp {
-        background-color: #F8F9FA !important;
+        background-color: #F8FAFC !important;
         color: #0F172A !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     
-    /* Forzar visibilidad en todos los textos de Streamlit */
     label, p, span, h1, h2, h3, h4, h5, h6, .stMarkdown, div[data-testid="stMarkdownContainer"] p {
         color: #0F172A !important;
     }
 
-    /* Encabezado Principal Azul */
+    /* Encabezado Principal */
     .header-container {
-        background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
-        padding: 20px;
-        border-radius: 16px;
-        text-align: center;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 100%);
+        padding: 22px 28px;
+        border-radius: 12px;
+        text-align: left;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
     }
-    .header-container h1, .header-container p {
+    .header-container h1 {
         color: #FFFFFF !important;
+        font-weight: 700 !important;
+        font-size: 1.75rem !important;
+        letter-spacing: -0.02em;
+        margin-bottom: 4px !important;
+    }
+    .header-container p {
+        color: #94A3B8 !important;
+        font-size: 0.9rem;
+        margin: 0;
     }
 
-    /* Contraste en Selectores (Selectbox), Entradas de texto y Desplegables */
+    /* Pestañas (Tabs) estilo Dashboard */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 6px;
+        background-color: #E2E8F0;
+        padding: 4px;
+        border-radius: 10px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border: none !important;
+    }
+    .stTabs [data-baseweb="tab"] span {
+        color: #475569 !important;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #FFFFFF !important;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .stTabs [aria-selected="true"] span {
+        color: #1E3A8A !important;
+        font-weight: 700 !important;
+    }
+
+    /* Tarjeta de Proyecto */
+    .project-card {
+        background-color: #FFFFFF;
+        border-radius: 10px;
+        padding: 18px 22px;
+        border: 1px solid #E2E8F0;
+        border-left: 4px solid #2563EB;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        margin-top: 12px;
+        margin-bottom: 20px;
+    }
+    .project-card h3 {
+        margin: 0 0 8px 0 !important;
+        color: #0F172A !important;
+        font-size: 1.15rem !important;
+        font-weight: 700;
+    }
+    .project-card .badge {
+        display: inline-block;
+        background-color: #F1F5F9;
+        color: #334155 !important;
+        padding: 3px 8px;
+        border-radius: 5px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-right: 8px;
+    }
+    .project-card a {
+        color: #2563EB !important;
+        font-weight: 600;
+        text-decoration: none;
+    }
+    .project-card a:hover {
+        text-decoration: underline;
+    }
+
+    /* Componentes de Formulario */
     div[data-baseweb="select"] > div {
         background-color: #FFFFFF !important;
         color: #0F172A !important;
@@ -52,15 +123,6 @@ st.markdown("""
     div[data-baseweb="select"] span {
         color: #0F172A !important;
     }
-    div[data-baseweb="popover"] div {
-        background-color: #FFFFFF !important;
-        color: #0F172A !important;
-    }
-    li[role="option"] span {
-        color: #0F172A !important;
-    }
-
-    /* Inputs de Texto y TextArea */
     .stTextInput input, .stTextArea textarea {
         background-color: #FFFFFF !important;
         color: #0F172A !important;
@@ -68,93 +130,49 @@ st.markdown("""
         border-radius: 8px !important;
     }
 
-    /* Sliders de calificación */
+    /* Sliders */
     div[data-testid="stSlider"] p {
         color: #1E293B !important;
         font-weight: 600 !important;
+        font-size: 0.9rem;
     }
 
-    /* Pestañas (Tabs) */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: #E2E8F0;
-        padding: 6px;
-        border-radius: 12px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 8px;
-        padding: 10px 16px;
-        font-weight: 600;
-        border: none !important;
-    }
-    .stTabs [data-baseweb="tab"] span {
-        color: #475569 !important;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #FFFFFF !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-    .stTabs [aria-selected="true"] span {
-        color: #1E3A8A !important;
-        font-weight: 700 !important;
-    }
-
-    /* Tarjeta de Proyecto Seleccionado */
-    .project-card {
-        background-color: #FFFFFF;
-        border-radius: 12px;
-        padding: 18px 20px;
-        border-left: 6px solid #2563EB;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-        margin-top: 15px;
-        margin-bottom: 20px;
-    }
-    .project-card h3 {
-        margin: 0 0 6px 0 !important;
-        color: #0F172A !important;
-        font-size: 1.25rem !important;
-    }
-    .project-card p, .project-card code {
-        color: #334155 !important;
-    }
-    .project-card a {
-        color: #2563EB !important;
-        font-weight: 600;
-        text-decoration: underline;
-    }
-
-    /* Botón Principal */
+    /* Botones */
     .stButton>button {
-        background: linear-gradient(135deg, #16A34A 0%, #15803D 100%) !important;
+        background: #15803D !important;
         color: #FFFFFF !important;
-        font-size: 17px !important;
-        font-weight: 700 !important;
-        border-radius: 10px !important;
-        padding: 0.75rem 1rem !important;
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        border-radius: 8px !important;
+        padding: 0.65rem 1rem !important;
         border: none !important;
-        box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+        box-shadow: 0 2px 6px rgba(21, 128, 61, 0.2);
+        transition: background-color 0.15s ease-in-out;
+    }
+    .stButton>button:hover {
+        background: #166534 !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Encabezado con Logo (si existe logo.png)
+# Encabezado limpio
 if os.path.exists("logo.png"):
-    col_logo, col_header = st.columns([1, 3], vertical_alignment="center")
+    col_logo, col_header = st.columns([1, 4], vertical_alignment="center")
     with col_logo:
         st.image("logo.png", use_container_width=True)
     with col_header:
         st.markdown("""
             <div class="header-container" style="margin-bottom: 0;">
-                <h1>📊 Expotécnica 2026</h1>
-                <p>Sistema Digital de Evaluación y Ranking</p>
+                <h1>Expotécnica 2026</h1>
+                <p>Plataforma Oficial de Evaluación de Proyectos</p>
             </div>
         """, unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 else:
     st.markdown("""
         <div class="header-container">
-            <h1>📊 Expotécnica 2026</h1>
-            <p>Sistema Digital de Evaluación y Ranking de Proyectos</p>
+            <h1>Expotécnica 2026</h1>
+            <p>Plataforma Oficial de Evaluación de Proyectos</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -167,17 +185,15 @@ URL_RANKING = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?
 URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbxhYfT5q-hnJsv70NAiBmAY_Dwvbl-4jjn0uRdYWn1akl_bvZxQ1O25RoEmkp95IGzW/exec"
 
 # ==========================================
-# FUNCIONES CON CACHÉ PARA EVITAR SOBRECARGA
+# FUNCIONES CON CACHÉ
 # ==========================================
 
-# 1. Cargar catálogo de proyectos (Caché por 10 minutos)
 @st.cache_data(ttl=600)
 def cargar_proyectos():
     df = pd.read_csv(URL_PROYECTOS)
     df.columns = df.columns.str.strip()
     return df
 
-# 2. Cargar evaluaciones (Caché por 60 segundos)
 @st.cache_data(ttl=60)
 def cargar_evaluaciones():
     urls_a_probar = []
@@ -203,7 +219,6 @@ def cargar_evaluaciones():
             
     return pd.DataFrame(columns=["ID_Evaluacion", "Fecha_Hora", "Evaluador", "ID_Proyecto", "c1", "c2", "c3", "c4", "c5", "Puntaje_Total", "Porcentaje_Logro", "Comentarios", "Destacado"])
 
-# 3. Cargar tabla de ranking (Caché por 60 segundos)
 @st.cache_data(ttl=60)
 def cargar_ranking():
     df = pd.read_csv(URL_RANKING)
@@ -211,11 +226,10 @@ def cargar_ranking():
     return df
 
 
-# Cargar catálogo de proyectos utilizando la caché
 try:
     df_proyectos = cargar_proyectos()
-except Exception as e:
-    st.error("⚠️ Error de conexión al cargar la lista de proyectos.")
+except Exception:
+    st.error("Se produjo un error de conexión al cargar la lista de proyectos.")
     st.stop()
 
 col_evaluador = 'Evaluador' if 'Evaluador' in df_proyectos.columns else df_proyectos.columns[3]
@@ -225,49 +239,52 @@ col_proyecto = 'Proyecto' if 'Proyecto' in df_proyectos.columns else df_proyecto
 col_url = next((c for c in df_proyectos.columns if any(k in c.lower() for k in ['url', 'link', 'enlace', 'drive', 'video'])), None)
 
 # Pestañas principales
-tab_evaluar, tab_ranking, tab_historial = st.tabs(["📝 Cargar Evaluación", "🏆 Ranking Oficial", "📋 Evaluaciones Cargadas"])
+tab_evaluar, tab_ranking, tab_historial = st.tabs(["Evaluación", "Ranking General", "Historial"])
 
-# --- TAB 1: EVALUAR ---
+# --- PESTAÑA 1: EVALUAR ---
 with tab_evaluar:
     evaluadores_unicos = sorted(list(set([str(x).strip() for x in df_proyectos[col_evaluador].dropna().tolist() if str(x).strip()])))
-    evaluador_seleccionado = st.selectbox("👤 Selecciona tu Nombre (Evaluador):", ["-- Seleccionar --"] + evaluadores_unicos, key="sel_eval")
+    evaluador_seleccionado = st.selectbox("Evaluador asignado:", ["-- Seleccionar --"] + evaluadores_unicos, key="sel_eval")
 
     if evaluador_seleccionado != "-- Seleccionar --":
         df_filtrado = df_proyectos[df_proyectos[col_evaluador].astype(str).str.contains(evaluador_seleccionado, case=False, na=False)].copy()
-        df_filtrado['Display'] = df_filtrado[col_id].astype(str) + " - " + df_filtrado[col_proyecto].astype(str) + " (" + df_filtrado[col_escuela].astype(str) + ")"
+        df_filtrado['Display'] = df_filtrado[col_id].astype(str) + " — " + df_filtrado[col_proyecto].astype(str) + " (" + df_filtrado[col_escuela].astype(str) + ")"
         proyectos_opciones = df_filtrado['Display'].tolist()
         
-        st.caption(f"📌 Tienes **{len(proyectos_opciones)} proyectos** asignados a tu nombre.")
-        proyecto_elegido = st.selectbox("📌 Selecciona el Proyecto a Evaluar:", ["-- Seleccionar Proyecto --"] + proyectos_opciones, key="sel_proy")
+        st.caption(f"Posee {len(proyectos_opciones)} proyectos asignados.")
+        proyecto_elegido = st.selectbox("Proyecto a evaluar:", ["-- Seleccionar Proyecto --"] + proyectos_opciones, key="sel_proy")
         
         if proyecto_elegido != "-- Seleccionar Proyecto --":
             row_proj = df_filtrado[df_filtrado['Display'] == proyecto_elegido].iloc[0]
             
             url_val = str(row_proj[col_url]).strip() if col_url and pd.notna(row_proj[col_url]) else ""
-            url_html = f'<p style="margin-top: 6px;">🔗 <b>Enlace:</b> <a href="{url_val}" target="_blank">{url_val}</a></p>' if url_val and url_val.lower().startswith('http') else ""
+            url_html = f'<p style="margin-top: 8px; font-size: 0.9rem;">Enlace adjunto: <a href="{url_val}" target="_blank">{url_val}</a></p>' if url_val and url_val.lower().startswith('http') else ""
             
             st.markdown(f"""
             <div class="project-card">
                 <h3>{row_proj[col_proyecto]}</h3>
-                <p><b>ID:</b> <code>{row_proj[col_id]}</code> | <b>Escuela:</b> {row_proj[col_escuela]}</p>
+                <div>
+                    <span class="badge">ID: {row_proj[col_id]}</span>
+                    <span class="badge">Escuela: {row_proj[col_escuela]}</span>
+                </div>
                 {url_html}
             </div>
             """, unsafe_allow_html=True)
                 
-            st.markdown("#### 📝 Rubro de Calificación")
+            st.markdown("##### Criterios de Evaluación")
             
             with st.form("form_evaluacion"):
                 c1 = st.slider("1. ¿El proyecto resuelve un problema claro y funciona correctamente?", 1, 5, 3)
-                c2 = st.slider("2. ¿La propuesta presenta una idea novedosa o uso creativo?", 1, 5, 3)
+                c2 = st.slider("2. ¿La propuesta presenta una idea novedosa o uso creativo de tecnología?", 1, 5, 3)
                 c3 = st.slider("3. ¿El equipo explica con claridad y demuestra dominio técnico?", 1, 5, 3)
                 c4 = st.slider("4. ¿El stand está prolijo, organizado y con apoyo demostrativo?", 1, 5, 3)
                 c5 = st.slider("5. ¿Adaptan la explicación para todo público?", 1, 5, 3)
                 
                 st.markdown("---")
-                comentarios = st.text_area("💬 Comentarios / Observaciones:", placeholder="Escribe aquí las fortalezas o recomendaciones del proyecto...")
-                destacado = st.checkbox("⭐ ¿Marcar como Proyecto Destacado?")
+                comentarios = st.text_area("Observaciones técnicas y comentarios:", placeholder="Añada aquí observaciones adicionales sobre la presentación...")
+                destacado = st.checkbox("Mención especial (Proyecto Destacado)")
                 
-                enviar = st.form_submit_button("💾 Guardar Evaluación")
+                enviar = st.form_submit_button("Guardar Evaluación")
                 
             if enviar:
                 puntaje_total = c1 + c2 + c3 + c4 + c5
@@ -283,28 +300,28 @@ with tab_evaluar:
                     "Puntaje_Total": puntaje_total,
                     "Porcentaje_Logro": porcentaje_logro,
                     "Comentarios": comentarios,
-                    "Destacado": "⭐" if destacado else ""
+                    "Destacado": "Sí" if destacado else "No"
                 }
                 
-                with st.spinner("Registrando evaluación en planilla..."):
+                with st.spinner("Guardando registro..."):
                     try:
                         headers = {"Content-Type": "application/json"}
                         res = requests.post(URL_APPS_SCRIPT, data=json.dumps(datos_eval), headers=headers, timeout=15)
                         if "OK" in res.text:
-                            st.cache_data.clear()  # Limpia la caché para forzar la actualización inmediata de datos
-                            st.success("🎉 ¡Evaluación registrada con éxito!")
-                            st.balloons()
+                            st.cache_data.clear()
+                            st.success("Evaluación guardada correctamente.")
                         else:
-                            st.error(f"Error al enviar datos: {res.text}")
+                            st.error(f"Error en la respuesta del servidor: {res.text}")
                     except Exception as err:
                         st.error(f"Error de conexión: {err}")
 
-# --- TAB 2: RANKING OFICIAL ---
+# --- PESTAÑA 2: RANKING ---
 with tab_ranking:
-    st.markdown("### 🏆 Posiciones Oficiales")
     col_r1, col_r2 = st.columns([3, 1])
+    with col_r1:
+        st.markdown("##### Posiciones Consolidadas")
     with col_r2:
-        if st.button("🔄 Actualizar", key="btn_rank_ref"):
+        if st.button("Actualizar", key="btn_rank_ref"):
             st.cache_data.clear()
             st.rerun()
         
@@ -319,18 +336,18 @@ with tab_ranking:
                 height=380
             )
         else:
-            st.info("Aún no se han consolidado posiciones en el ranking.")
-    except Exception as e:
-        st.warning("El ranking se está calculando en segundo plano...")
+            st.info("No hay datos consolidados en la tabla de posiciones.")
+    except Exception:
+        st.warning("Cargando posiciones...")
 
-# --- TAB 3: EVALUACIONES CARGADAS Y ADMIN ---
+# --- PESTAÑA 3: HISTORIAL Y ADMIN ---
 with tab_historial:
-    st.markdown("### 📋 Historial de Evaluaciones")
+    st.markdown("##### Consultar Registros")
     try:
         df_eval = cargar_evaluaciones()
         
         evaluadores_unicos = sorted(list(set([str(x).strip() for x in df_proyectos[col_evaluador].dropna().tolist() if str(x).strip()])))
-        eval_usuario = st.selectbox("Filtrar por Evaluador:", ["-- Todos --"] + evaluadores_unicos, key="hist_eval")
+        eval_usuario = st.selectbox("Filtrar por evaluador:", ["-- Todos --"] + evaluadores_unicos, key="hist_eval")
         
         if len(df_eval) > 0:
             if eval_usuario != "-- Todos --":
@@ -350,42 +367,42 @@ with tab_historial:
                     height=280
                 )
             else:
-                st.info(f"No hay registros asignados para {eval_usuario}.")
+                st.info(f"Sin registros asignados para {eval_usuario}.")
         else:
-            st.info("Aún no hay evaluaciones registradas en la planilla.")
+            st.info("Aún no existen registros ingresados.")
             
         # ZONA ADMINISTRADOR
         st.markdown("---")
-        with st.expander("🔐 Panel de Administración (Borrar Registro)"):
-            codigo_admin = st.text_input("Ingresa la clave ADMIN:", type="password", key="pwd_admin")
+        with st.expander("Panel de Gestión (Eliminar registro)"):
+            codigo_admin = st.text_input("Clave de administrador:", type="password", key="pwd_admin")
             
             if codigo_admin.strip() == "ADMIN":
-                st.success("Acceso Administrador concedido.")
+                st.success("Acceso concedido.")
                 
                 if len(df_eval) > 0:
                     col_id_eval = df_eval.columns[0]
                     ids_disponibles = df_eval[col_id_eval].dropna().astype(str).tolist()
                     
                     if ids_disponibles:
-                        id_a_borrar = st.selectbox("🗑️ ID_Evaluación a eliminar:", ["-- Seleccionar ID --"] + ids_disponibles)
+                        id_a_borrar = st.selectbox("ID de Evaluación a eliminar:", ["-- Seleccionar ID --"] + ids_disponibles)
                         
                         if id_a_borrar != "-- Seleccionar ID --":
-                            if st.button("❌ Confirmar Eliminación", type="primary"):
+                            if st.button("Eliminar Registro", type="primary"):
                                 payload_delete = {"accion": "eliminar", "ID_Evaluacion": id_a_borrar}
-                                with st.spinner("Eliminando fila de la planilla..."):
+                                with st.spinner("Procesando eliminación..."):
                                     try:
                                         headers = {"Content-Type": "application/json"}
                                         res = requests.post(URL_APPS_SCRIPT, data=json.dumps(payload_delete), headers=headers, timeout=15)
                                         if "OK_ELIMINADO" in res.text:
-                                            st.cache_data.clear()  # Limpia la caché tras eliminar
-                                            st.success(f"Evaluación '{id_a_borrar}' eliminada correctamente.")
+                                            st.cache_data.clear()
+                                            st.success(f"Registro '{id_a_borrar}' eliminado correctamente.")
                                             st.rerun()
                                         else:
-                                            st.error(f"Error al eliminar: {res.text}")
+                                            st.error(f"Error al procesar: {res.text}")
                                     except Exception as err:
                                         st.error(f"Error de conexión: {err}")
             elif codigo_admin != "":
-                st.error("Código incorrecto.")
+                st.error("Clave no válida.")
                 
-    except Exception as e:
-        st.warning("No se pudieron cargar las evaluaciones registradas.")
+    except Exception:
+        st.warning("No fue posible obtener los registros guardados.")
