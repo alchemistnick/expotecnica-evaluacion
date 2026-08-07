@@ -22,7 +22,8 @@ st.title("📋 Evaluación Expotécnica")
 # Conexión con Google Sheets y Google Apps Script
 SPREADSHEET_ID = "1KWw1ybOAuxxBk4P3gVoqp90UXx2pBaa9ccAiiV8Rd-w"
 URL_PROYECTOS = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=PROYECTOS"
-URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbztdcK8cKx8PccUoH9ZtDS6hT1imOHturPpV3D2jfvAFIWkwrHLs0AYw6pVvHHGYLT_/exec"
+URL_EVALUACIONES = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=EVALUACIÓN"
+URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbzNSmDLQmrfRK-BRAB-ujmp2WEqbmCnz2f4EPDOLL2AS12XM0-GTQxki7QjOoyGm1Z0/exec"
 
 # Cargar proyectos desde la solapa PROYECTOS
 try:
@@ -87,6 +88,7 @@ if evaluador_seleccionado != "-- Seleccionar --":
             porcentaje_logro = f"{(puntaje_total / 25.0) * 100:.1f}%"
             
             datos_eval = {
+                "accion": "crear",
                 "ID_Evaluacion": str(uuid.uuid4())[:8],
                 "Fecha_Hora": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
                 "Evaluador": evaluador_seleccionado,
@@ -110,3 +112,59 @@ if evaluador_seleccionado != "-- Seleccionar --":
                         st.error(f"Error al enviar datos: {res.text}")
                 except Exception as err:
                     st.error(f"Error de conexión: {err}")
+
+    # --- SECCIÓN: VER Y ADMINISTRAR EVALUACIONES CARGADAS ---
+    st.markdown("---")
+    with st.expander("📋 Ver Evaluaciones Ya Cargadas"):
+        try:
+            df_eval = pd.read_csv(URL_EVALUACIONES)
+            df_eval.columns = df_eval.columns.str.strip()
+            
+            # Filtrar por el evaluador seleccionado
+            col_eval_name = next((c for c in df_eval.columns if 'evaluador' in c.lower()), df_eval.columns[2])
+            df_mis_eval = df_eval[df_eval[col_eval_name].astype(str).str.contains(evaluador_seleccionado, case=False, na=False)]
+            
+            if len(df_mis_eval) > 0:
+                st.write(f"Has registrado **{len(df_mis_eval)} evaluaciones**:")
+                st.dataframe(df_mis_eval, use_container_width=True)
+            else:
+                st.info("Aún no has registrado ninguna evaluación.")
+                
+            # --- MODO ADMINISTRADOR (CLAVE "ADMIN") ---
+            st.markdown("---")
+            st.subheader("🔐 Zona de Administración")
+            codigo_admin = st.text_input("Ingresa el código ADMIN para gestionar o borrar registros:", type="password")
+            
+            if codigo_admin.strip() == "ADMIN":
+                st.success("Acceso Administrador concedido.")
+                st.write("### Carga completa de la solapa EVALUACIÓN:")
+                st.dataframe(df_eval, use_container_width=True)
+                
+                col_id_eval = df_eval.columns[0] # ID_Evaluacion
+                ids_disponibles = df_eval[col_id_eval].dropna().astype(str).tolist()
+                
+                if ids_disponibles:
+                    id_a_borrar = st.selectbox("🗑️ Selecciona el ID_Evaluación a eliminar:", ["-- Seleccionar ID --"] + ids_disponibles)
+                    
+                    if id_a_borrar != "-- Seleccionar ID --":
+                        if st.button("❌ Confirmar Eliminación en Excel", type="primary"):
+                            payload_delete = {
+                                "accion": "eliminar",
+                                "ID_Evaluacion": id_a_borrar
+                            }
+                            with st.spinner("Eliminando fila en Google Sheets..."):
+                                try:
+                                    headers = {"Content-Type": "application/json"}
+                                    res = requests.post(URL_APPS_SCRIPT, data=json.dumps(payload_delete), headers=headers, timeout=10)
+                                    if "OK_ELIMINADO" in res.text:
+                                        st.success(f"🎉 Evaluación ID '{id_a_borrar}' eliminada correctamente del Excel.")
+                                        st.rerun()
+                                    else:
+                                        st.error(f"Error al eliminar: {res.text}")
+                                except Exception as err:
+                                    st.error(f"Error de conexión: {err}")
+            elif codigo_admin != "":
+                st.error("Código incorrecto.")
+                
+        except Exception as e:
+            st.warning("No se pudieron cargar las evaluaciones registradas o la tabla aún está vacía.")
