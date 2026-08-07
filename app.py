@@ -21,7 +21,7 @@ st.title("📋 Evaluación Expotécnica")
 # Conexión con Google Sheets y Google Apps Script
 SPREADSHEET_ID = "1KWw1ybOAuxxBk4P3gVoqp90UXx2pBaa9ccAiiV8Rd-w"
 URL_PROYECTOS = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=PROYECTOS"
-URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbxKTcbrnaptcjgXB1pS9r61-lxhChD6bxxL4P-iHJ_PkYyUecB-S6eUDIjGGtJ518dr/exec"
+URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbztdcK8cKx8PccUoH9ZtDS6hT1imOHturPpV3D2jfvAFIWkwrHLs0AYw6pVvHHGYLT_/exec"
 
 # Cargar proyectos desde la solapa PROYECTOS
 try:
