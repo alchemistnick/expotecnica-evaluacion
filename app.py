@@ -9,13 +9,13 @@ import os
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Expotécnica 2026 — Plataforma de Evaluación", 
-    page_icon="logo.png" if os.path.exists("logo.png") else "📊", 
+    page_title="Expotécnica 2026", 
+    page_icon="🏆", 
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# Estilos CSS Profesionales y Limpios
+# Estilos CSS Profesionales con Colores de Alto Contraste
 st.markdown("""
     <style>
     /* Estilos globales */
@@ -25,33 +25,36 @@ st.markdown("""
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     
-    label, p, span, h1, h2, h3, h4, h5, h6, .stMarkdown, div[data-testid="stMarkdownContainer"] p {
+    /* Forzar texto visible en etiquetas y párrafos comunes */
+    label, p, span, h2, h3, h4, h5, h6, .stMarkdown, div[data-testid="stMarkdownContainer"] p {
         color: #0F172A !important;
     }
 
-    /* Encabezado Principal */
+    /* Encabezado Principal Centrado */
     .header-container {
         background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 100%);
-        padding: 22px 28px;
+        padding: 24px;
         border-radius: 12px;
-        text-align: left;
+        text-align: center !important;
         margin-bottom: 24px;
         box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
     }
     .header-container h1 {
         color: #FFFFFF !important;
         font-weight: 700 !important;
-        font-size: 1.75rem !important;
+        font-size: 1.8rem !important;
         letter-spacing: -0.02em;
-        margin-bottom: 4px !important;
+        margin-bottom: 6px !important;
+        text-align: center !important;
     }
     .header-container p {
-        color: #94A3B8 !important;
-        font-size: 0.9rem;
+        color: #E2E8F0 !important;
+        font-size: 0.95rem;
         margin: 0;
+        text-align: center !important;
     }
 
-    /* Pestañas (Tabs) estilo Dashboard */
+    /* Pestañas (Tabs) */
     .stTabs [data-baseweb="tab-list"] {
         gap: 6px;
         background-color: #E2E8F0;
@@ -97,7 +100,7 @@ st.markdown("""
     .project-card .badge {
         display: inline-block;
         background-color: #F1F5F9;
-        color: #334155 !important;
+        color: #1E293B !important;
         padding: 3px 8px;
         border-radius: 5px;
         font-size: 0.85rem;
@@ -132,7 +135,7 @@ st.markdown("""
 
     /* Sliders */
     div[data-testid="stSlider"] p {
-        color: #1E293B !important;
+        color: #0F172A !important;
         font-weight: 600 !important;
         font-size: 0.9rem;
     }
@@ -155,7 +158,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Encabezado limpio
+# Encabezado Centrado
 if os.path.exists("logo.png"):
     col_logo, col_header = st.columns([1, 4], vertical_alignment="center")
     with col_logo:
