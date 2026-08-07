@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
-from streamlit_gsheets import GSheetsConnection
+import requests
 from datetime import datetime
 import uuid
 
-# Configuración de página
+# Configuración de página y estilos para celular
 st.set_page_config(page_title="Expotécnica - Evaluación", page_icon="📝", layout="centered")
 
 st.markdown("""
@@ -16,16 +16,22 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("📋 Evaluación Expotécnica")
-st.write("Selecciona un proyecto asignado y carga tu evaluación.")
 
-# Conexión con Google Sheets mediante st.connection
-conn = st.connection("gsheets", type=GSheetsConnection)
+# SPREADSHEET CONFIGURATION
+SPREADSHEET_ID = "1KWw1ybOAuxxBk4P3gVoqp90UXx2pBaa9ccAiiV8Rd-w"
 
+# 1. LECTURA: Se alimenta directamente de la solapa PROYECTOS
+URL_PROYECTOS = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=PROYECTOS"
+
+# 2. ESCRITURA: Pega aquí la URL de tu script en Apps Script / Java que inserta en la solapa EVALUACIÓN
+URL_ESCRITURA_EVALUACION = "PEGA_AQUI_TU_URL_DE_APPS_SCRIPT_O_JAVA"
+
+# Cargar solapa PROYECTOS
 try:
-    df_proyectos = conn.read(worksheet="PROYECTOS", ttl=0)
+    df_proyectos = pd.read_csv(URL_PROYECTOS)
     df_proyectos.columns = df_proyectos.columns.str.strip()
 except Exception as e:
-    st.error("Error al conectar con la planilla de Google Sheets. Revisa la configuración de Secrets y permisos.")
+    st.error("Error al cargar la solapa PROYECTOS de Google Sheets.")
     st.stop()
 
 col_evaluador = 'Evaluador' if 'Evaluador' in df_proyectos.columns else df_proyectos.columns[3]
@@ -33,37 +39,31 @@ col_id = 'ID_proyecto' if 'ID_proyecto' in df_proyectos.columns else df_proyecto
 col_escuela = 'Escuela' if 'Escuela' in df_proyectos.columns else df_proyectos.columns[1]
 col_proyecto = 'Proyecto' if 'Proyecto' in df_proyectos.columns else df_proyectos.columns[2]
 
-# 1. Selección de Evaluador
+# Selección de Evaluador
 evaluadores_unicos = sorted(list(set([str(x).strip() for x in df_proyectos[col_evaluador].dropna().tolist() if str(x).strip()])))
 evaluador_seleccionado = st.selectbox("👤 Selecciona tu Nombre (Evaluador):", ["-- Seleccionar --"] + evaluadores_unicos)
 
 if evaluador_seleccionado != "-- Seleccionar --":
     df_filtrado = df_proyectos[df_proyectos[col_evaluador].astype(str).str.contains(evaluador_seleccionado, case=False, na=False)].copy()
-    
     df_filtrado['Display'] = df_filtrado[col_id].astype(str) + " - " + df_filtrado[col_proyecto].astype(str) + " (" + df_filtrado[col_escuela].astype(str) + ")"
     proyectos_opciones = df_filtrado['Display'].tolist()
     
     st.info(f"Tienes **{len(proyectos_opciones)} proyectos** asignados.")
-    
     proyecto_elegido = st.selectbox("📌 Selecciona el Proyecto a Evaluar:", ["-- Seleccionar Proyecto --"] + proyectos_opciones)
     
     if proyecto_elegido != "-- Seleccionar Proyecto --":
         row_proj = df_filtrado[df_filtrado['Display'] == proyecto_elegido].iloc[0]
         
+        # Tarjeta visual con datos extraídos de la solapa PROYECTOS
         st.markdown(f"""
         <div class="project-card">
             <h4>{row_proj[col_proyecto]}</h4>
             <p><b>ID:</b> {row_proj[col_id]} | <b>Escuela:</b> {row_proj[col_escuela]}</p>
         </div>
         """, unsafe_allow_html=True)
-        
-        if 'Link al Proyecto' in row_proj and pd.notna(row_proj['Link al Proyecto']) and str(row_proj['Link al Proyecto']).startswith("http"):
-            st.markdown(f"📄 [Abrir Documento/Link del Proyecto]({row_proj['Link al Proyecto']})")
-        if 'Link al Video' in row_proj and pd.notna(row_proj['Link al Video']) and str(row_proj['Link al Video']).startswith("http"):
-            st.markdown(f"🎥 [Ver Video del Proyecto]({row_proj['Link al Video']})")
             
         st.markdown("---")
-        st.subheader("📝 Formulario de Calificación")
+        st.subheader("📝 Cargar Evaluación")
         
         with st.form("form_evaluacion"):
             c1 = st.slider("1. ¿El proyecto resuelve un problema claro y funciona correctamente?", 1, 5, 3)
@@ -72,41 +72,36 @@ if evaluador_seleccionado != "-- Seleccionar --":
             c4 = st.slider("4. ¿El stand está prolijo, organizado y con apoyo visual/demostrativo?", 1, 5, 3)
             c5 = st.slider("5. ¿Adaptan la explicación para todo público?", 1, 5, 3)
             
-            comentarios = st.text_area("💬 Comentarios / Observaciones:", placeholder="Escribe aquí tus comentarios del proyecto...")
+            comentarios = st.text_area("💬 Comentarios / Observaciones:")
             destacado = st.checkbox("⭐ ¿Marcar como Proyecto Destacado?")
             
-            enviar = st.form_submit_button("💾 Guardar Evaluación")
+            enviar = st.form_submit_button("💾 Guardar en Solapa EVALUACIÓN")
             
         if enviar:
             puntaje_total = c1 + c2 + c3 + c4 + c5
-            porcentaje_logro = (puntaje_total / 25.0) * 100
+            porcentaje_logro = f"{(puntaje_total / 25.0) * 100:.1f}%"
             
-            # Formato exacto de columnas para la pestaña EVALUACIÓN
-            nueva_evaluacion = pd.DataFrame([{
+            # Estructura con las columnas exactas que espera la solapa EVALUACIÓN
+            payload_evaluacion = {
                 "ID_Evaluacion": str(uuid.uuid4())[:8],
                 "Fecha_Hora": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
                 "Evaluador": evaluador_seleccionado,
                 "ID_Proyecto": str(row_proj[col_id]),
-                "¿El proyecto resuelve un problema claro y funciona correctamente según los objetivos planteados?": c1,
-                "¿La propuesta presenta una idea novedosa, original o un uso creativo de los recursos/tecnología?": c2,
-                "¿El equipo explica con claridad cómo desarrollaron el proyecto y demuestra dominio del tema y vocabulario técnico?": c3,
-                "¿El stand se encuentra prolijo, bien organizado y utiliza apoyo visual o demostrativo atractivo?": c4,
-                "¿Logran adaptar la explicación para que personas sin conocimientos técnicos o visitantes de distintos niveles entiendan la idea?": c5,
+                "c1": c1,
+                "c2": c2,
+                "c3": c3,
+                "c4": c4,
+                "c5": c5,
                 "Puntaje_Total": puntaje_total,
-                "Porcentaje_Logro": f"{porcentaje_logro:.1f}%",
+                "Porcentaje_Logro": porcentaje_logro,
                 "Comentarios": comentarios,
                 "Destacado": "⭐" if destacado else ""
-            }])
+            }
             
-            try:
-                # Leer evaluaciones actuales y concatenar la nueva fila
-                df_evals = conn.read(worksheet="EVALUACIÓN", ttl=0)
-                df_actualizado = pd.concat([df_evals, nueva_evaluacion], ignore_index=True)
-                
-                # Escribir en la solapa EVALUACIÓN
-                conn.update(worksheet="EVALUACIÓN", data=df_actualizado)
-                
-                st.success(f"🎉 ¡Evaluación guardada exitosamente en la solapa EVALUACIÓN!")
-                st.balloons()
-            except Exception as ex:
-                st.error(f"Error al escribir en la planilla: {ex}")
+            with st.spinner("Escribiendo en la solapa EVALUACIÓN..."):
+                try:
+                    res = requests.post(URL_ESCRITURA_EVALUACION, json=payload_evaluacion, timeout=10)
+                    st.success("🎉 ¡Evaluación agregada exitosamente a la solapa EVALUACIÓN!")
+                    st.balloons()
+                except Exception as err:
+                    st.error(f"Error al enviar datos: {err}")
