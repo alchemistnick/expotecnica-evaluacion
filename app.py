@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 import json
+import urllib.parse
 from datetime import datetime
 import uuid
 
@@ -19,10 +20,12 @@ st.markdown("""
 
 st.title("📋 Expotécnica 2026")
 
-# Conexiones con Google Sheets
+# Conexiones con Google Sheets (Codificando nombres de solapa con tildes)
 SPREADSHEET_ID = "1KWw1ybOAuxxBk4P3gVoqp90UXx2pBaa9ccAiiV8Rd-w"
+sheet_eval_enc = urllib.parse.quote("EVALUACIÓN")
+
 URL_PROYECTOS = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=PROYECTOS"
-URL_EVALUACIONES = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=EVALUACIÓN"
+URL_EVALUACIONES = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet={sheet_eval_enc}"
 URL_RANKING = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=RANKING_OFICIAL"
 URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbxhYfT5q-hnJsv70NAiBmAY_Dwvbl-4jjn0uRdYWn1akl_bvZxQ1O25RoEmkp95IGzW/exec"
 
@@ -137,47 +140,53 @@ with tab_historial:
         df_eval = pd.read_csv(URL_EVALUACIONES)
         df_eval.columns = df_eval.columns.str.strip()
         
-        eval_usuario = st.selectbox("Selecciona un Evaluador para filtrar:", ["-- Seleccionar --"] + evaluadores_unicos, key="hist_eval")
-        if eval_usuario != "-- Seleccionar --":
-            col_eval_name = next((c for c in df_eval.columns if 'evaluador' in c.lower()), df_eval.columns[2])
-            df_mis_eval = df_eval[df_eval[col_eval_name].astype(str).str.contains(eval_usuario, case=False, na=False)]
-            
+        eval_usuario = st.selectbox("Selecciona un Evaluador para filtrar:", ["-- Todos --"] + evaluadores_unicos, key="hist_eval")
+        
+        if len(df_eval) > 0:
+            if eval_usuario != "-- Todos --":
+                col_eval_name = next((c for c in df_eval.columns if 'evaluador' in c.lower()), df_eval.columns[2])
+                df_mis_eval = df_eval[df_eval[col_eval_name].astype(str).str.contains(eval_usuario, case=False, na=False)]
+            else:
+                df_mis_eval = df_eval
+                
             if len(df_mis_eval) > 0:
-                st.write(f"Registros de **{eval_usuario}** ({len(df_mis_eval)}):")
+                st.write(f"Mostrando **{len(df_mis_eval)} evaluaciones**:")
                 st.dataframe(df_mis_eval, use_container_width=True, hide_index=True)
             else:
                 st.info(f"No hay registros asignados a {eval_usuario}.")
-                
+        else:
+            st.info("Aún no hay evaluaciones registradas en la solapa.")
+            
         st.markdown("---")
         st.subheader("🔐 Zona de Administración")
-        codigo_admin = st.text_input("Ingresa la clave ADMIN para eliminar registros:", type="password")
+        codigo_admin = st.text_input("Ingresa la clave ADMIN para borrar registros:", type="password")
         
         if codigo_admin.strip() == "ADMIN":
             st.success("Acceso Administrador concedido.")
-            st.dataframe(df_eval, use_container_width=True, hide_index=True)
             
-            col_id_eval = df_eval.columns[0]
-            ids_disponibles = df_eval[col_id_eval].dropna().astype(str).tolist()
-            
-            if ids_disponibles:
-                id_a_borrar = st.selectbox("🗑️ Selecciona el ID_Evaluación a borrar:", ["-- Seleccionar ID --"] + ids_disponibles)
+            if len(df_eval) > 0:
+                col_id_eval = df_eval.columns[0]
+                ids_disponibles = df_eval[col_id_eval].dropna().astype(str).tolist()
                 
-                if id_a_borrar != "-- Seleccionar ID --":
-                    if st.button("❌ Confirmar Eliminación en Excel", type="primary"):
-                        payload_delete = {"accion": "eliminar", "ID_Evaluacion": id_a_borrar}
-                        with st.spinner("Eliminando fila en Google Sheets..."):
-                            try:
-                                headers = {"Content-Type": "application/json"}
-                                res = requests.post(URL_APPS_SCRIPT, data=json.dumps(payload_delete), headers=headers, timeout=12)
-                                if "OK_ELIMINADO" in res.text:
-                                    st.success(f"🎉 Evaluación ID '{id_a_borrar}' eliminada del Excel.")
-                                    st.rerun()
-                                else:
-                                    st.error(f"Error al eliminar: {res.text}")
-                            except Exception as err:
-                                st.error(f"Error de conexión: {err}")
+                if ids_disponibles:
+                    id_a_borrar = st.selectbox("🗑️ Selecciona el ID_Evaluación a borrar:", ["-- Seleccionar ID --"] + ids_disponibles)
+                    
+                    if id_a_borrar != "-- Seleccionar ID --":
+                        if st.button("❌ Confirmar Eliminación en Excel", type="primary"):
+                            payload_delete = {"accion": "eliminar", "ID_Evaluacion": id_a_borrar}
+                            with st.spinner("Eliminando fila en Google Sheets..."):
+                                try:
+                                    headers = {"Content-Type": "application/json"}
+                                    res = requests.post(URL_APPS_SCRIPT, data=json.dumps(payload_delete), headers=headers, timeout=12)
+                                    if "OK_ELIMINADO" in res.text:
+                                        st.success(f"🎉 Evaluación ID '{id_a_borrar}' eliminada del Excel.")
+                                        st.rerun()
+                                    else:
+                                        st.error(f"Error al eliminar: {res.text}")
+                                except Exception as err:
+                                    st.error(f"Error de conexión: {err}")
         elif codigo_admin != "":
             st.error("Código incorrecto.")
             
     except Exception as e:
-        st.warning("No se pudieron cargar las evaluaciones registradas.")
+        st.warning(f"No se pudieron cargar las evaluaciones registradas: {e}")
