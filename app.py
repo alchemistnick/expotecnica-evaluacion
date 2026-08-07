@@ -4,6 +4,7 @@ import requests
 from datetime import datetime
 import uuid
 
+# Configuración visual
 st.set_page_config(page_title="Expotécnica - Evaluación", page_icon="📝", layout="centered")
 
 st.markdown("""
@@ -16,17 +17,17 @@ st.markdown("""
 
 st.title("📋 Evaluación Expotécnica")
 
+# Conexión con tu planilla y Apps Script
 SPREADSHEET_ID = "1KWw1ybOAuxxBk4P3gVoqp90UXx2pBaa9ccAiiV8Rd-w"
 URL_PROYECTOS = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=PROYECTOS"
+URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbxKTcbrnaptcjgXB1pS9r61-lxhChD6bxxL4P-iHJ_PkYyUecB-S6eUDIjGGtJ518dr/exec"
 
-# PEGA AQUÍ LA URL GENERADA EN EL PASO 1 (MANTÉN LAS COMILLAS)
-URL_APPS_SCRIPT = "https://script.google.com/macros/s/TU_SCRIPT_ID_AQUI/exec"
-
+# Cargar proyectos desde la solapa PROYECTOS
 try:
     df_proyectos = pd.read_csv(URL_PROYECTOS)
     df_proyectos.columns = df_proyectos.columns.str.strip()
 except Exception as e:
-    st.error("Error al cargar proyectos desde Google Sheets.")
+    st.error("Error al cargar la solapa PROYECTOS de Google Sheets.")
     st.stop()
 
 col_evaluador = 'Evaluador' if 'Evaluador' in df_proyectos.columns else df_proyectos.columns[3]
@@ -34,6 +35,7 @@ col_id = 'ID_proyecto' if 'ID_proyecto' in df_proyectos.columns else df_proyecto
 col_escuela = 'Escuela' if 'Escuela' in df_proyectos.columns else df_proyectos.columns[1]
 col_proyecto = 'Proyecto' if 'Proyecto' in df_proyectos.columns else df_proyectos.columns[2]
 
+# Selección de Evaluador
 evaluadores_unicos = sorted(list(set([str(x).strip() for x in df_proyectos[col_evaluador].dropna().tolist() if str(x).strip()])))
 evaluador_seleccionado = st.selectbox("👤 Selecciona tu Nombre (Evaluador):", ["-- Seleccionar --"] + evaluadores_unicos)
 
@@ -86,7 +88,7 @@ if evaluador_seleccionado != "-- Seleccionar --":
                 "Destacado": "⭐" if destacado else ""
             }
             
-            with st.spinner("Escribiendo en Google Sheets..."):
+            with st.spinner("Guardando en la solapa EVALUACIÓN..."):
                 try:
                     res = requests.post(URL_APPS_SCRIPT, json=datos_eval, timeout=10)
                     st.success("🎉 ¡Evaluación guardada exitosamente en la solapa EVALUACIÓN!")
