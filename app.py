@@ -13,6 +13,7 @@ st.markdown("""
     .main { padding: 1rem; }
     .stButton>button { width: 100%; background-color: #2E7D32; color: white; font-size: 18px; font-weight: bold; border-radius: 8px; padding: 0.6rem; }
     .project-card { background-color: #F4F6F8; padding: 12px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #1976D2; }
+    .project-card a { color: #1976D2; font-weight: bold; text-decoration: underline; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -36,6 +37,9 @@ col_id = 'ID_proyecto' if 'ID_proyecto' in df_proyectos.columns else df_proyecto
 col_escuela = 'Escuela' if 'Escuela' in df_proyectos.columns else df_proyectos.columns[1]
 col_proyecto = 'Proyecto' if 'Proyecto' in df_proyectos.columns else df_proyectos.columns[2]
 
+# Buscar columna para la URL / Link / Enlace
+col_url = next((c for c in df_proyectos.columns if any(k in c.lower() for k in ['url', 'link', 'enlace', 'drive', 'video'])), None)
+
 # Selección de Evaluador
 evaluadores_unicos = sorted(list(set([str(x).strip() for x in df_proyectos[col_evaluador].dropna().tolist() if str(x).strip()])))
 evaluador_seleccionado = st.selectbox("👤 Selecciona tu Nombre (Evaluador):", ["-- Seleccionar --"] + evaluadores_unicos)
@@ -51,10 +55,15 @@ if evaluador_seleccionado != "-- Seleccionar --":
     if proyecto_elegido != "-- Seleccionar Proyecto --":
         row_proj = df_filtrado[df_filtrado['Display'] == proyecto_elegido].iloc[0]
         
+        # Extraer enlace si existe en la fila
+        url_val = str(row_proj[col_url]).strip() if col_url and pd.notna(row_proj[col_url]) else ""
+        url_html = f'<p style="margin-top: 8px;">🔗 <b>Enlace al Proyecto:</b> <a href="{url_val}" target="_blank">{url_val}</a></p>' if url_val and url_val.lower().startswith('http') else ""
+        
         st.markdown(f"""
         <div class="project-card">
             <h4>{row_proj[col_proyecto]}</h4>
             <p><b>ID:</b> {row_proj[col_id]} | <b>Escuela:</b> {row_proj[col_escuela]}</p>
+            {url_html}
         </div>
         """, unsafe_allow_html=True)
             
