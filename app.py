@@ -20,14 +20,44 @@ st.markdown("""
 
 st.title("📋 Expotécnica 2026")
 
-# Conexiones con Google Sheets (Codificando nombres de solapa con tildes)
+# ID de tu planilla de Google Sheets
 SPREADSHEET_ID = "1KWw1ybOAuxxBk4P3gVoqp90UXx2pBaa9ccAiiV8Rd-w"
-sheet_eval_enc = urllib.parse.quote("EVALUACIÓN")
+
+# OPCIONAL: Si sabes el GID de la solapa EVALUACIÓN (está al final de la URL en tu navegador: #gid=XXXXX), ponlo aquí entre comillas.
+GID_EVALUACION = "" 
 
 URL_PROYECTOS = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=PROYECTOS"
-URL_EVALUACIONES = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet={sheet_eval_enc}"
 URL_RANKING = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=RANKING_OFICIAL"
 URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbxhYfT5q-hnJsv70NAiBmAY_Dwvbl-4jjn0uRdYWn1akl_bvZxQ1O25RoEmkp95IGzW/exec"
+
+# Función de carga inteligente para la solapa EVALUACIÓN
+def cargar_evaluaciones():
+    urls_a_probar = []
+    
+    if GID_EVALUACION.strip():
+        urls_a_probar.append(f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid={GID_EVALUACION.strip()}")
+        
+    urls_a_probar.extend([
+        f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=" + urllib.parse.quote("EVALUACIÓN"),
+        f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=" + urllib.parse.quote("EVALUACIÓN "),
+        f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=EVALUACION",
+        f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=EVALUACION "
+    ])
+    
+    for url in urls_a_probar:
+        try:
+            df = pd.read_csv(url)
+            df.columns = df.columns.str.strip()
+            cols_lower = [str(c).lower() for c in df.columns]
+            
+            # Verificar que sea la solapa de EVALUACIÓN y NO la de PROYECTOS
+            if any(k in cols_lower for k in ['id_evaluacion', 'c1', 'puntaje_total', 'porcentaje_logro']):
+                return df
+        except:
+            continue
+            
+    # Si falla la búsqueda automática, devuelve estructura vacía esperada
+    return pd.DataFrame(columns=["ID_Evaluacion", "Fecha_Hora", "Evaluador", "ID_Proyecto", "c1", "c2", "c3", "c4", "c5", "Puntaje_Total", "Porcentaje_Logro", "Comentarios", "Destacado"])
 
 # Cargar proyectos
 try:
@@ -110,7 +140,7 @@ with tab_evaluar:
                         headers = {"Content-Type": "application/json"}
                         res = requests.post(URL_APPS_SCRIPT, data=json.dumps(datos_eval), headers=headers, timeout=12)
                         if "OK" in res.text:
-                            st.success("🎉 ¡Evaluación guardada exitosamente y ranking actualizado!")
+                            st.success("🎉 ¡Evaluación guardada exitosamente!")
                             st.balloons()
                         else:
                             st.error(f"Error al enviar datos: {res.text}")
@@ -137,9 +167,9 @@ with tab_ranking:
 with tab_historial:
     st.subheader("📋 Consultar Evaluaciones")
     try:
-        df_eval = pd.read_csv(URL_EVALUACIONES)
-        df_eval.columns = df_eval.columns.str.strip()
+        df_eval = cargar_evaluaciones()
         
+        evaluadores_unicos = sorted(list(set([str(x).strip() for x in df_proyectos[col_evaluador].dropna().tolist() if str(x).strip()])))
         eval_usuario = st.selectbox("Selecciona un Evaluador para filtrar:", ["-- Todos --"] + evaluadores_unicos, key="hist_eval")
         
         if len(df_eval) > 0:
