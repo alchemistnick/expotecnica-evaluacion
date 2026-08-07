@@ -24,7 +24,7 @@ st.markdown("""
         color: #0F172A !important;
     }
     
-    /* Forzar visibilidad en todos los textos de Streamlit (labels, títulos, captions) */
+    /* Forzar visibilidad en todos los textos de Streamlit */
     label, p, span, h1, h2, h3, h4, h5, h6, .stMarkdown, div[data-testid="stMarkdownContainer"] p {
         color: #0F172A !important;
     }
@@ -166,7 +166,19 @@ URL_PROYECTOS = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/t
 URL_RANKING = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=RANKING_OFICIAL"
 URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbxhYfT5q-hnJsv70NAiBmAY_Dwvbl-4jjn0uRdYWn1akl_bvZxQ1O25RoEmkp95IGzW/exec"
 
-# Carga de evaluaciones
+# ==========================================
+# FUNCIONES CON CACHÉ PARA EVITAR SOBRECARGA
+# ==========================================
+
+# 1. Cargar catálogo de proyectos (Caché por 10 minutos)
+@st.cache_data(ttl=600)
+def cargar_proyectos():
+    df = pd.read_csv(URL_PROYECTOS)
+    df.columns = df.columns.str.strip()
+    return df
+
+# 2. Cargar evaluaciones (Caché por 60 segundos)
+@st.cache_data(ttl=60)
 def cargar_evaluaciones():
     urls_a_probar = []
     if GID_EVALUACION.strip():
@@ -191,10 +203,17 @@ def cargar_evaluaciones():
             
     return pd.DataFrame(columns=["ID_Evaluacion", "Fecha_Hora", "Evaluador", "ID_Proyecto", "c1", "c2", "c3", "c4", "c5", "Puntaje_Total", "Porcentaje_Logro", "Comentarios", "Destacado"])
 
-# Cargar catálogo de proyectos
+# 3. Cargar tabla de ranking (Caché por 60 segundos)
+@st.cache_data(ttl=60)
+def cargar_ranking():
+    df = pd.read_csv(URL_RANKING)
+    df.columns = df.columns.str.strip()
+    return df
+
+
+# Cargar catálogo de proyectos utilizando la caché
 try:
-    df_proyectos = pd.read_csv(URL_PROYECTOS)
-    df_proyectos.columns = df_proyectos.columns.str.strip()
+    df_proyectos = cargar_proyectos()
 except Exception as e:
     st.error("⚠️ Error de conexión al cargar la lista de proyectos.")
     st.stop()
@@ -270,8 +289,9 @@ with tab_evaluar:
                 with st.spinner("Registrando evaluación en planilla..."):
                     try:
                         headers = {"Content-Type": "application/json"}
-                        res = requests.post(URL_APPS_SCRIPT, data=json.dumps(datos_eval), headers=headers, timeout=12)
+                        res = requests.post(URL_APPS_SCRIPT, data=json.dumps(datos_eval), headers=headers, timeout=15)
                         if "OK" in res.text:
+                            st.cache_data.clear()  # Limpia la caché para forzar la actualización inmediata de datos
                             st.success("🎉 ¡Evaluación registrada con éxito!")
                             st.balloons()
                         else:
@@ -285,11 +305,11 @@ with tab_ranking:
     col_r1, col_r2 = st.columns([3, 1])
     with col_r2:
         if st.button("🔄 Actualizar", key="btn_rank_ref"):
+            st.cache_data.clear()
             st.rerun()
         
     try:
-        df_ranking = pd.read_csv(URL_RANKING)
-        df_ranking.columns = df_ranking.columns.str.strip()
+        df_ranking = cargar_ranking()
         
         if len(df_ranking) > 0:
             st.dataframe(
@@ -355,8 +375,9 @@ with tab_historial:
                                 with st.spinner("Eliminando fila de la planilla..."):
                                     try:
                                         headers = {"Content-Type": "application/json"}
-                                        res = requests.post(URL_APPS_SCRIPT, data=json.dumps(payload_delete), headers=headers, timeout=12)
+                                        res = requests.post(URL_APPS_SCRIPT, data=json.dumps(payload_delete), headers=headers, timeout=15)
                                         if "OK_ELIMINADO" in res.text:
+                                            st.cache_data.clear()  # Limpia la caché tras eliminar
                                             st.success(f"Evaluación '{id_a_borrar}' eliminada correctamente.")
                                             st.rerun()
                                         else:
