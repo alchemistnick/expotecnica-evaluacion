@@ -18,7 +18,7 @@ st.markdown("""
 
 st.title("📋 Evaluación Expotécnica")
 
-# Conexión con tu planilla y Apps Script
+# Conexión con Google Sheets y Google Apps Script
 SPREADSHEET_ID = "1KWw1ybOAuxxBk4P3gVoqp90UXx2pBaa9ccAiiV8Rd-w"
 URL_PROYECTOS = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=PROYECTOS"
 URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbxKTcbrnaptcjgXB1pS9r61-lxhChD6bxxL4P-iHJ_PkYyUecB-S6eUDIjGGtJ518dr/exec"
@@ -89,16 +89,15 @@ if evaluador_seleccionado != "-- Seleccionar --":
                 "Destacado": "⭐" if destacado else ""
             }
             
-            with st.spinner("Enviando a Google Sheets..."):
+            with st.spinner("Guardando en Google Sheets..."):
                 try:
                     headers = {"Content-Type": "application/json"}
                     res = requests.post(URL_APPS_SCRIPT, data=json.dumps(datos_eval), headers=headers, timeout=10)
                     
-                    st.write("📌 Status Code:", res.status_code)
-                    st.write("📌 Respuesta de Google:", res.text)
-                    
                     if "OK" in res.text:
-                        st.success("🎉 ¡Evaluación guardada exitosamente!")
+                        st.success("🎉 ¡Evaluación guardada exitosamente en la solapa EVALUACIÓN!")
                         st.balloons()
+                    else:
+                        st.error(f"Error al enviar datos: {res.text}")
                 except Exception as err:
                     st.error(f"Error de conexión: {err}")
