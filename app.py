@@ -119,7 +119,7 @@ st.markdown("""
 if os.path.exists("logo.png"):
     col_logo, col_header = st.columns([1, 3], vertical_alignment="center")
     with col_logo:
-        st.image("logo.png", use_column_width=True)
+        st.image("logo.png", use_container_width=True)
     with col_header:
         st.markdown("""
             <div class="header-container" style="margin-bottom: 0;">
@@ -380,7 +380,7 @@ with tab_voto:
         df_recuento_final = pd.merge(recuento, df_proyectos[[col_id, col_proyecto, col_escuela]], left_on="ID_Proyecto", right_on=col_id, how="left")
         df_recuento_final = df_recuento_final[["ID_Proyecto", col_proyecto, col_escuela, "Total Votos"]].sort_values(by="Total Votos", ascending=False)
 
-        st.dataframe(df_recuento_final, use_column_width=True, hide_index=True)
+        st.dataframe(df_recuento_final, use_container_width=True, hide_index=True)
     else:
         st.info("Aún no se han registrado votos en la solapa VOTO_POPULAR.")
 
@@ -399,7 +399,7 @@ with tab_ranking:
         if len(df_ranking) > 0:
             st.dataframe(
                 df_ranking, 
-                use_column_width=True, 
+                use_container_width=True, 
                 hide_index=True,
                 height=380
             )
@@ -430,7 +430,7 @@ with tab_historial:
                 
                 st.dataframe(
                     df_compacto, 
-                    use_column_width=True, 
+                    use_container_width=True, 
                     hide_index=True,
                     height=280
                 )
