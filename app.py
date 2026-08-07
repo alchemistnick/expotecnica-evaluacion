@@ -239,6 +239,7 @@ with tab_evaluar:
         
         if proyecto_elegido != "-- Seleccionar Proyecto --":
             row_proj = df_filtrado[df_filtrado['Display'] == proyecto_elegido].iloc[0]
+            id_proy_actual = str(row_proj[col_id]).strip()
             
             url_val = str(row_proj[col_url]).strip() if col_url and pd.notna(row_proj[col_url]) else ""
             url_html = f'<p style="margin-top: 6px;">🔗 <b>Enlace al Proyecto:</b> <a href="{url_val}" target="_blank">{url_val}</a></p>' if url_val and url_val.lower().startswith('http') else ""
@@ -250,51 +251,80 @@ with tab_evaluar:
                 {url_html}
             </div>
             """, unsafe_allow_html=True)
-                
-            st.markdown("#### 📝 Rubro de Calificación")
             
-            with st.form("form_evaluacion"):
-                c1 = st.slider("1. ¿El proyecto resuelve un problema claro y funciona correctamente?", 1, 5, 3)
-                c2 = st.slider("2. ¿La propuesta presenta una idea novedosa o uso creativo de tecnología?", 1, 5, 3)
-                c3 = st.slider("3. ¿El equipo explica con claridad y demuestra dominio técnico?", 1, 5, 3)
-                c4 = st.slider("4. ¿El stand está prolijo, organizado y con apoyo demostrativo?", 1, 5, 3)
-                c5 = st.slider("5. ¿Adaptan la explicación para todo público?", 1, 5, 3)
+            # --- VERIFICAR SI EL PROYECTO YA FUE EVALUADO ---
+            df_eval_existentes = cargar_evaluaciones()
+            evaluadores_previos = []
+            
+            if len(df_eval_existentes) > 0:
+                col_id_p = next((c for c in df_eval_existentes.columns if 'proyecto' in c.lower()), df_eval_existentes.columns[3])
+                col_eval_p = next((c for c in df_eval_existentes.columns if 'evaluador' in c.lower()), df_eval_existentes.columns[2])
                 
-                st.markdown("---")
-                comentarios = st.text_area("💬 Comentarios / Observaciones:", placeholder="Escribe aquí las fortalezas o recomendaciones del proyecto...")
-                destacado = st.checkbox("⭐ ¿Marcar como Proyecto Destacado?")
+                evals_mismo_proy = df_eval_existentes[df_eval_existentes[col_id_p].astype(str).str.strip().str.upper() == id_proy_actual.upper()]
+                if len(evals_mismo_proy) > 0:
+                    evaluadores_previos = evals_mismo_proy[col_eval_p].dropna().astype(str).str.strip().unique().tolist()
+
+            permitir_evaluacion = True
+            
+            if evaluadores_previos:
+                nombres_eval = ", ".join(evaluadores_previos)
+                st.warning(f"⚠️ **Este proyecto ya fue evaluado por:** {nombres_eval}.")
+                confirmacion = st.radio(
+                    "¿Igualmente deseas registrar una nueva evaluación?", 
+                    ["No", "Sí"], 
+                    index=0, 
+                    key="conf_re_eval"
+                )
+                if confirmacion == "No":
+                    permitir_evaluacion = False
+                    st.info("No se mostrará el formulario de evaluación para este proyecto.")
+
+            # Formulario de calificación
+            if permitir_evaluacion:
+                st.markdown("#### 📝 Rubro de Calificación")
                 
-                enviar = st.form_submit_button("💾 Guardar Evaluación")
-                
-            if enviar:
-                puntaje_total = c1 + c2 + c3 + c4 + c5
-                porcentaje_logro = f"{(puntaje_total / 25.0) * 100:.1f}%"
-                
-                datos_eval = {
-                    "accion": "crear",
-                    "ID_Evaluacion": str(uuid.uuid4())[:8],
-                    "Fecha_Hora": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-                    "Evaluador": evaluador_seleccionado,
-                    "ID_Proyecto": str(row_proj[col_id]),
-                    "c1": c1, "c2": c2, "c3": c3, "c4": c4, "c5": c5,
-                    "Puntaje_Total": puntaje_total,
-                    "Porcentaje_Logro": porcentaje_logro,
-                    "Comentarios": comentarios,
-                    "Destacado": "⭐" if destacado else ""
-                }
-                
-                with st.spinner("⚙️ Procesando y guardando evaluación..."):
-                    try:
-                        headers = {"Content-Type": "application/json"}
-                        res = requests.post(URL_APPS_SCRIPT, data=json.dumps(datos_eval), headers=headers, timeout=15)
-                        if "OK" in res.text:
-                            st.cache_data.clear()
-                            st.toast("⚙️ Evaluación procesada y registrada en el sistema.", icon="⚙️")
-                            st.success("⚙️ ¡Evaluación registrada con éxito!")
-                        else:
-                            st.error(f"Error al enviar datos: {res.text}")
-                    except Exception as err:
-                        st.error(f"Error de conexión: {err}")
+                with st.form("form_evaluacion"):
+                    c1 = st.slider("1. ¿El proyecto resuelve un problema claro y funciona correctamente?", 1, 5, 3)
+                    c2 = st.slider("2. ¿La propuesta presenta una idea novedosa o uso creativo de tecnología?", 1, 5, 3)
+                    c3 = st.slider("3. ¿El equipo explica con claridad y demuestra dominio técnico?", 1, 5, 3)
+                    c4 = st.slider("4. ¿El stand está prolijo, organizado y con apoyo demostrativo?", 1, 5, 3)
+                    c5 = st.slider("5. ¿Adaptan la explicación para todo público?", 1, 5, 3)
+                    
+                    st.markdown("---")
+                    comentarios = st.text_area("💬 Comentarios / Observaciones:", placeholder="Escribe aquí las fortalezas o recomendaciones del proyecto...")
+                    destacado = st.checkbox("⭐ ¿Marcar como Proyecto Destacado?")
+                    
+                    enviar = st.form_submit_button("💾 Guardar Evaluación")
+                    
+                if enviar:
+                    puntaje_total = c1 + c2 + c3 + c4 + c5
+                    porcentaje_logro = f"{(puntaje_total / 25.0) * 100:.1f}%"
+                    
+                    datos_eval = {
+                        "accion": "crear",
+                        "ID_Evaluacion": str(uuid.uuid4())[:8],
+                        "Fecha_Hora": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                        "Evaluador": evaluador_seleccionado,
+                        "ID_Proyecto": str(row_proj[col_id]),
+                        "c1": c1, "c2": c2, "c3": c3, "c4": c4, "c5": c5,
+                        "Puntaje_Total": puntaje_total,
+                        "Porcentaje_Logro": porcentaje_logro,
+                        "Comentarios": comentarios,
+                        "Destacado": "⭐" if destacado else ""
+                    }
+                    
+                    with st.spinner("⚙️ Procesando y guardando evaluación..."):
+                        try:
+                            headers = {"Content-Type": "application/json"}
+                            res = requests.post(URL_APPS_SCRIPT, data=json.dumps(datos_eval), headers=headers, timeout=15)
+                            if "OK" in res.text:
+                                st.cache_data.clear()
+                                st.toast("⚙️ Evaluación procesada y registrada en el sistema.", icon="⚙️")
+                                st.success("⚙️ ¡Evaluación registrada con éxito!")
+                            else:
+                                st.error(f"Error al enviar datos: {res.text}")
+                        except Exception as err:
+                            st.error(f"Error de conexión: {err}")
 
 # --- TAB 2: RANKING OFICIAL ---
 with tab_ranking:
