@@ -314,7 +314,7 @@ with tab_historial:
         # ZONA ADMINISTRADOR
         st.markdown("---")
         with st.expander("🔐 Panel de Administración (Borrar Registro)"):
-            codigo_admin = st.text_input("Ingresa la clave ADMIN:", type="password", key="pwd_admin")
+            codigo_admin = st.text_input("Ingresa la clave:", type="password", key="pwd_admin")
             
             if codigo_admin.strip() == "ADMIN":
                 st.success("Acceso Administrador concedido.")
