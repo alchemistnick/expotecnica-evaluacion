@@ -15,37 +15,66 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Estilos CSS Personalizados
+# Estilos CSS Personalizados con Contraste Reforzado
 st.markdown("""
     <style>
-    /* Estilos globales */
+    /* Fondo e interfaz general */
     .stApp {
-        background-color: #F8F9FA;
+        background-color: #F8F9FA !important;
+        color: #0F172A !important;
     }
     
-    /* Encabezado Principal */
+    /* Forzar visibilidad en todos los textos de Streamlit (labels, títulos, captions) */
+    label, p, span, h1, h2, h3, h4, h5, h6, .stMarkdown, div[data-testid="stMarkdownContainer"] p {
+        color: #0F172A !important;
+    }
+
+    /* Encabezado Principal Azul */
     .header-container {
         background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
         padding: 20px;
         border-radius: 16px;
-        color: white;
         text-align: center;
         margin-bottom: 20px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.08);
     }
-    .header-container h1 {
-        color: white !important;
-        font-weight: 800 !important;
-        font-size: 2rem !important;
-        margin-bottom: 4px !important;
-    }
-    .header-container p {
-        color: #E0E7FF;
-        font-size: 0.95rem;
-        margin: 0;
+    .header-container h1, .header-container p {
+        color: #FFFFFF !important;
     }
 
-    /* Pestañas (Tabs) estilizadas */
+    /* Contraste en Selectores (Selectbox), Entradas de texto y Desplegables */
+    div[data-baseweb="select"] > div {
+        background-color: #FFFFFF !important;
+        color: #0F172A !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 8px !important;
+    }
+    div[data-baseweb="select"] span {
+        color: #0F172A !important;
+    }
+    div[data-baseweb="popover"] div {
+        background-color: #FFFFFF !important;
+        color: #0F172A !important;
+    }
+    li[role="option"] span {
+        color: #0F172A !important;
+    }
+
+    /* Inputs de Texto y TextArea */
+    .stTextInput input, .stTextArea textarea {
+        background-color: #FFFFFF !important;
+        color: #0F172A !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 8px !important;
+    }
+
+    /* Sliders de calificación */
+    div[data-testid="stSlider"] p {
+        color: #1E293B !important;
+        font-weight: 600 !important;
+    }
+
+    /* Pestañas (Tabs) */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
         background-color: #E2E8F0;
@@ -56,13 +85,18 @@ st.markdown("""
         border-radius: 8px;
         padding: 10px 16px;
         font-weight: 600;
-        color: #475569;
         border: none !important;
+    }
+    .stTabs [data-baseweb="tab"] span {
+        color: #475569 !important;
     }
     .stTabs [aria-selected="true"] {
         background-color: #FFFFFF !important;
-        color: #1E3A8A !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .stTabs [aria-selected="true"] span {
+        color: #1E3A8A !important;
+        font-weight: 700 !important;
     }
 
     /* Tarjeta de Proyecto Seleccionado */
@@ -80,35 +114,25 @@ st.markdown("""
         color: #0F172A !important;
         font-size: 1.25rem !important;
     }
-    .project-card p {
-        margin: 4px 0 !important;
-        color: #475569;
-        font-size: 0.95rem;
+    .project-card p, .project-card code {
+        color: #334155 !important;
     }
     .project-card a {
-        color: #2563EB;
+        color: #2563EB !important;
         font-weight: 600;
-        text-decoration: none;
-    }
-    .project-card a:hover {
         text-decoration: underline;
     }
 
     /* Botón Principal */
     .stButton>button {
         background: linear-gradient(135deg, #16A34A 0%, #15803D 100%) !important;
-        color: white !important;
+        color: #FFFFFF !important;
         font-size: 17px !important;
         font-weight: 700 !important;
         border-radius: 10px !important;
         padding: 0.75rem 1rem !important;
         border: none !important;
         box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
-        transition: all 0.2s ease-in-out;
-    }
-    .stButton>button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 15px rgba(22, 163, 74, 0.35);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -187,7 +211,7 @@ tab_evaluar, tab_ranking, tab_historial = st.tabs(["📝 Cargar Evaluación", "�
 # --- TAB 1: EVALUAR ---
 with tab_evaluar:
     evaluadores_unicos = sorted(list(set([str(x).strip() for x in df_proyectos[col_evaluador].dropna().tolist() if str(x).strip()])))
-    evaluador_seleccionado = st.selectbox("👤 **Selecciona tu Nombre (Evaluador):**", ["-- Seleccionar --"] + evaluadores_unicos, key="sel_eval")
+    evaluador_seleccionado = st.selectbox("👤 Selecciona tu Nombre (Evaluador):", ["-- Seleccionar --"] + evaluadores_unicos, key="sel_eval")
 
     if evaluador_seleccionado != "-- Seleccionar --":
         df_filtrado = df_proyectos[df_proyectos[col_evaluador].astype(str).str.contains(evaluador_seleccionado, case=False, na=False)].copy()
@@ -195,7 +219,7 @@ with tab_evaluar:
         proyectos_opciones = df_filtrado['Display'].tolist()
         
         st.caption(f"📌 Tienes **{len(proyectos_opciones)} proyectos** asignados a tu nombre.")
-        proyecto_elegido = st.selectbox("📌 **Selecciona el Proyecto a Evaluar:**", ["-- Seleccionar Proyecto --"] + proyectos_opciones, key="sel_proy")
+        proyecto_elegido = st.selectbox("📌 Selecciona el Proyecto a Evaluar:", ["-- Seleccionar Proyecto --"] + proyectos_opciones, key="sel_proy")
         
         if proyecto_elegido != "-- Seleccionar Proyecto --":
             row_proj = df_filtrado[df_filtrado['Display'] == proyecto_elegido].iloc[0]
@@ -222,7 +246,7 @@ with tab_evaluar:
                 
                 st.markdown("---")
                 comentarios = st.text_area("💬 Comentarios / Observaciones:", placeholder="Escribe aquí las fortalezas o recomendaciones del proyecto...")
-                destacado = st.checkbox("⭐ **¿Marcar como Proyecto Destacado?**")
+                destacado = st.checkbox("⭐ ¿Marcar como Proyecto Destacado?")
                 
                 enviar = st.form_submit_button("💾 Guardar Evaluación")
                 
@@ -296,7 +320,6 @@ with tab_historial:
                 df_mis_eval = df_eval
                 
             if len(df_mis_eval) > 0:
-                # Columnas compactas incluyendo Destacado (⭐)
                 cols_compactas = [c for c in ["Fecha_Hora", "Evaluador", "ID_Proyecto", "Puntaje_Total", "Porcentaje_Logro", "Destacado", "Comentarios"] if c in df_mis_eval.columns]
                 df_compacto = df_mis_eval[cols_compactas] if len(cols_compactas) > 0 else df_mis_eval
                 
@@ -314,7 +337,7 @@ with tab_historial:
         # ZONA ADMINISTRADOR
         st.markdown("---")
         with st.expander("🔐 Panel de Administración (Borrar Registro)"):
-            codigo_admin = st.text_input("Ingresa la clave:", type="password", key="pwd_admin")
+            codigo_admin = st.text_input("Ingresa la clave ADMIN:", type="password", key="pwd_admin")
             
             if codigo_admin.strip() == "ADMIN":
                 st.success("Acceso Administrador concedido.")
