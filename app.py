@@ -49,7 +49,6 @@ st.markdown("""
         text-align: center !important;
     }
 
-    /* Pantalla de evento finalizado */
     .closed-container {
         background-color: #FFFFFF;
         border-radius: 16px;
@@ -163,7 +162,7 @@ else:
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
-# --- PANTALLA DE EVENTO FINALIZADO (Si no está autenticado como ADMIN) ---
+# --- PANTALLA DE EVENTO FINALIZADO ---
 if not st.session_state.authenticated:
     st.markdown("""
         <div class="closed-container">
@@ -175,20 +174,22 @@ if not st.session_state.authenticated:
 
     st.markdown("---")
     with st.expander("🔐 Acceso Administrador / Organización"):
-        clave_ingresada = st.text_input("Ingresa la contraseña de acceso:", type="password", key="pwd_acceso_cierre")
-        if st.button("Ingresar al Sistema", type="primary", key="btn_login_cierre"):
-            if clave_ingresada.strip() == "ADMIN":
-                st.session_state.authenticated = True
-                st.rerun()
-            else:
-                st.error("Contraseña incorrecta.")
+        with st.form("form_login_admin"):
+            clave_ingresada = st.text_input("Ingresa la contraseña de acceso:", type="password")
+            btn_submit_login = st.form_submit_button("Ingresar al Sistema")
+            
+            if btn_submit_login:
+                if clave_ingresada.strip() == "ADMIN":
+                    st.session_state.authenticated = True
+                    st.rerun()
+                else:
+                    st.error("Contraseña incorrecta.")
     st.stop()
 
 # ==========================================
 # CÓDIGO DEL SISTEMA (SOLO ACCESIBLE CON CLAVE ADMIN)
 # ==========================================
 
-# Configuración de Google Sheets
 SPREADSHEET_ID = "1KWw1ybOAuxxBk4P3gVoqp90UXx2pBaa9ccAiiV8Rd-w"
 GID_EVALUACION = "" 
 
@@ -196,10 +197,6 @@ URL_PROYECTOS = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/t
 URL_RANKING = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=RANKING_OFICIAL"
 URL_VOTO_POPULAR = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=" + urllib.parse.quote("VOTO_POPULAR")
 URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbwRmgFNFYPX6NSb1SIJAwOW-v5IqYbMHYk_prN-3gsUPE3Oh6Ngs8--C-itIDyq1blF/exec"
-
-# ==========================================
-# FUNCIONES CON CACHÉ
-# ==========================================
 
 @st.cache_data(ttl=600)
 def cargar_proyectos():
@@ -209,16 +206,12 @@ def cargar_proyectos():
 
 @st.cache_data(ttl=30)
 def cargar_evaluaciones():
-    urls_a_probar = []
-    if GID_EVALUACION.strip():
-        urls_a_probar.append(f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid={GID_EVALUACION.strip()}")
-        
-    urls_a_probar.extend([
+    urls_a_probar = [
         f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=" + urllib.parse.quote("EVALUACIÓN"),
         f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=" + urllib.parse.quote("EVALUACIÓN "),
         f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=EVALUACION",
         f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=EVALUACION "
-    ])
+    ]
     
     for url in urls_a_probar:
         try:
@@ -494,7 +487,9 @@ with tab_historial:
         # ZONA ADMINISTRADOR
         st.markdown("---")
         with st.expander("🔐 Panel de Administración (Borrar Registro)"):
-            codigo_admin = st.text_input("Ingresa la clave ADMIN:", type="password", key="pwd_admin")
+            with st.form("form_admin_del"):
+                codigo_admin = st.text_input("Ingresa la clave ADMIN:", type="password")
+                btn_check_admin = st.form_submit_button("Validar Admin")
 
             if codigo_admin.strip() == "ADMIN":
                 st.success("Acceso Administrador concedido.")
